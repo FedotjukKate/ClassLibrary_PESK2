@@ -40,7 +40,7 @@ namespace ClassLibrary_PESK2
         {
             Eplan.EplApi.Gui.Menu PLC_menu = new Eplan.EplApi.Gui.Menu();
 
-            uint menuId = PLC_menu.AddMainMenu("Штука", "Сервисные программы", "Хрень для штуки", "аггггг", "", int.MaxValue);
+            uint menuId = PLC_menu.AddMainMenu("Доп", "Сервисные программы", "Конфигуратор", "аггггг", "", int.MaxValue);
             return true;
         }
 

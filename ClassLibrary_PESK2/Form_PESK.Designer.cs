@@ -45,8 +45,13 @@
             this.textBox1 = new System.Windows.Forms.TextBox();
             this.textBox2 = new System.Windows.Forms.TextBox();
             this.button1 = new System.Windows.Forms.Button();
-            this.button2 = new System.Windows.Forms.Button();
-            this.button3 = new System.Windows.Forms.Button();
+            this.checkBox1 = new System.Windows.Forms.CheckBox();
+            this.label10 = new System.Windows.Forms.Label();
+            this.label11 = new System.Windows.Forms.Label();
+            this.comboBox6 = new System.Windows.Forms.ComboBox();
+            this.label12 = new System.Windows.Forms.Label();
+            this.label13 = new System.Windows.Forms.Label();
+            this.textBox3 = new System.Windows.Forms.TextBox();
             this.SuspendLayout();
             // 
             // label2
@@ -160,40 +165,41 @@
             this.comboBox5.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.comboBox5.FormattingEnabled = true;
             this.comboBox5.Items.AddRange(new object[] {
-            "220 В",
-            "380 В",
-            "690 В"});
+            "220",
+            "380",
+            "690"});
             this.comboBox5.Location = new System.Drawing.Point(260, 260);
             this.comboBox5.Name = "comboBox5";
             this.comboBox5.Size = new System.Drawing.Size(460, 24);
             this.comboBox5.TabIndex = 19;
+            this.comboBox5.Tag = "";
             // 
             // label7
             // 
             this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(150, 263);
+            this.label7.Location = new System.Drawing.Point(135, 263);
             this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(89, 16);
+            this.label7.Size = new System.Drawing.Size(104, 16);
             this.label7.TabIndex = 22;
-            this.label7.Text = "Напряжение";
+            this.label7.Text = "Напряжение, В";
             // 
             // label8
             // 
             this.label8.AutoSize = true;
-            this.label8.Location = new System.Drawing.Point(167, 308);
+            this.label8.Location = new System.Drawing.Point(138, 308);
             this.label8.Name = "label8";
-            this.label8.Size = new System.Drawing.Size(72, 16);
+            this.label8.Size = new System.Drawing.Size(101, 16);
             this.label8.TabIndex = 23;
-            this.label8.Text = "Мощность";
+            this.label8.Text = "Мощность, кВт";
             // 
             // label9
             // 
             this.label9.AutoSize = true;
-            this.label9.Location = new System.Drawing.Point(208, 353);
+            this.label9.Location = new System.Drawing.Point(193, 353);
             this.label9.Name = "label9";
-            this.label9.Size = new System.Drawing.Size(31, 16);
+            this.label9.Size = new System.Drawing.Size(46, 16);
             this.label9.TabIndex = 24;
-            this.label9.Text = "Ток";
+            this.label9.Text = "Ток, А";
             // 
             // textBox1
             // 
@@ -211,7 +217,7 @@
             // 
             // button1
             // 
-            this.button1.Location = new System.Drawing.Point(16, 410);
+            this.button1.Location = new System.Drawing.Point(12, 506);
             this.button1.Name = "button1";
             this.button1.Size = new System.Drawing.Size(125, 28);
             this.button1.TabIndex = 27;
@@ -219,33 +225,82 @@
             this.button1.UseVisualStyleBackColor = true;
             this.button1.Click += new System.EventHandler(this.button1_Click);
             // 
-            // button2
+            // checkBox1
             // 
-            this.button2.Location = new System.Drawing.Point(153, 410);
-            this.button2.Name = "button2";
-            this.button2.Size = new System.Drawing.Size(125, 28);
-            this.button2.TabIndex = 28;
-            this.button2.Text = "Цена";
-            this.button2.UseVisualStyleBackColor = true;
-            this.button2.Click += new System.EventHandler(this.button2_Click);
+            this.checkBox1.AutoSize = true;
+            this.checkBox1.Location = new System.Drawing.Point(508, 511);
+            this.checkBox1.Name = "checkBox1";
+            this.checkBox1.Size = new System.Drawing.Size(212, 20);
+            this.checkBox1.TabIndex = 29;
+            this.checkBox1.Text = "Автоматический подбор ПЧ";
+            this.checkBox1.UseVisualStyleBackColor = true;
             // 
-            // button3
+            // label10
             // 
-            this.button3.Location = new System.Drawing.Point(295, 410);
-            this.button3.Name = "button3";
-            this.button3.Size = new System.Drawing.Size(125, 28);
-            this.button3.TabIndex = 29;
-            this.button3.Text = "Цена 2";
-            this.button3.UseVisualStyleBackColor = true;
-            this.button3.Click += new System.EventHandler(this.button3_Click);
+            this.label10.AutoSize = true;
+            this.label10.Location = new System.Drawing.Point(13, 375);
+            this.label10.Name = "label10";
+            this.label10.Size = new System.Drawing.Size(350, 16);
+            this.label10.TabIndex = 30;
+            this.label10.Text = "_________________________________________________";
+            // 
+            // label11
+            // 
+            this.label11.AutoSize = true;
+            this.label11.Location = new System.Drawing.Point(163, 408);
+            this.label11.Name = "label11";
+            this.label11.Size = new System.Drawing.Size(76, 16);
+            this.label11.TabIndex = 31;
+            this.label11.Text = "Выбор ПЧ*\r\n";
+            // 
+            // comboBox6
+            // 
+            this.comboBox6.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.comboBox6.FormattingEnabled = true;
+            this.comboBox6.Location = new System.Drawing.Point(260, 405);
+            this.comboBox6.Name = "comboBox6";
+            this.comboBox6.Size = new System.Drawing.Size(460, 24);
+            this.comboBox6.TabIndex = 32;
+            this.comboBox6.Tag = "";
+            // 
+            // label12
+            // 
+            this.label12.AutoSize = true;
+            this.label12.Location = new System.Drawing.Point(167, 453);
+            this.label12.Name = "label12";
+            this.label12.Size = new System.Drawing.Size(72, 16);
+            this.label12.TabIndex = 33;
+            this.label12.Text = "Скидка, %\r\n";
+            // 
+            // label13
+            // 
+            this.label13.AutoSize = true;
+            this.label13.Font = new System.Drawing.Font("Microsoft Sans Serif", 6F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
+            this.label13.Location = new System.Drawing.Point(61, 424);
+            this.label13.Name = "label13";
+            this.label13.Size = new System.Drawing.Size(178, 13);
+            this.label13.TabIndex = 34;
+            this.label13.Text = "*не нажат автоматический подбор";
+            // 
+            // textBox3
+            // 
+            this.textBox3.Location = new System.Drawing.Point(260, 450);
+            this.textBox3.Name = "textBox3";
+            this.textBox3.Size = new System.Drawing.Size(460, 22);
+            this.textBox3.TabIndex = 35;
             // 
             // Form_PESK
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(800, 450);
-            this.Controls.Add(this.button3);
-            this.Controls.Add(this.button2);
+            this.ClientSize = new System.Drawing.Size(756, 546);
+            this.Controls.Add(this.textBox3);
+            this.Controls.Add(this.label13);
+            this.Controls.Add(this.label12);
+            this.Controls.Add(this.comboBox6);
+            this.Controls.Add(this.label11);
+            this.Controls.Add(this.label10);
+            this.Controls.Add(this.checkBox1);
             this.Controls.Add(this.button1);
             this.Controls.Add(this.textBox2);
             this.Controls.Add(this.textBox1);
@@ -264,7 +319,7 @@
             this.Controls.Add(this.comboBox2);
             this.Controls.Add(this.comboBox1);
             this.Name = "Form_PESK";
-            this.Text = "Что-то";
+            this.Text = "Конфигуратор";
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -288,7 +343,12 @@
         private System.Windows.Forms.TextBox textBox1;
         private System.Windows.Forms.TextBox textBox2;
         private System.Windows.Forms.Button button1;
-        private System.Windows.Forms.Button button2;
-        private System.Windows.Forms.Button button3;
+        private System.Windows.Forms.CheckBox checkBox1;
+        private System.Windows.Forms.Label label10;
+        private System.Windows.Forms.Label label11;
+        private System.Windows.Forms.ComboBox comboBox6;
+        private System.Windows.Forms.Label label12;
+        private System.Windows.Forms.Label label13;
+        private System.Windows.Forms.TextBox textBox3;
     }
 }

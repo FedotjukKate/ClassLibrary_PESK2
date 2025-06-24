@@ -23,7 +23,6 @@ namespace ClassLibrary_PESK2.StandardsAction
         {
             Form_PESK form1 = new Form_PESK();
             form1.Show();
-            MessageBox.Show("Х*ета");
             return true;
         }
 
