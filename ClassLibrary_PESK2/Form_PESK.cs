@@ -42,6 +42,9 @@ namespace ClassLibrary_PESK2
             comboBox3.SelectedIndex = 0;
             comboBox4.SelectedIndex = 0;
             comboBox5.SelectedIndex = 0;
+            comboBox7.SelectedIndex = 0;
+            comboBox8.SelectedIndex = 0;
+
             checkBox1.Checked = true;
             comboBox6.Enabled = !checkBox1.Checked;
             checkBox1.CheckedChanged += (sender, e) => comboBox6.Enabled = !checkBox1.Checked;
@@ -59,7 +62,31 @@ namespace ClassLibrary_PESK2
             checkBox1.CheckedChanged += ParameterChanged;
         }
 
-        private async void button1_Click(object sender, EventArgs e)
+        private void button1_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show("Кнопка 1", "Предупреждение");
+            button2.Enabled = true;
+            button3.Enabled = true;
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show("Кнопка 2", "Предупреждение");
+        }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show("Кнопка 3", "Предупреждение");
+            button4.Enabled = true;
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show("Кнопка 4", "Предупреждение");
+        }
+
+
+        private async void button0_Click(object sender, EventArgs e)
         {
             string article = "";
             string discribe = "";
@@ -371,44 +398,19 @@ namespace ClassLibrary_PESK2
                         return float.MaxValue;
                     })
                     .FirstOrDefault();
-                if (float.Parse(bestDeviceByPower.Current) > current)
+                if (float.Parse(bestDeviceByPower.Power) > power)
                 {
                     return bestDeviceByPower;
                 }
             }
 
             //MessageBox.Show("tttttttttttttttttt");
-            //Device bestDeviceOverall = filteredDevices
-            //    .OrderBy(d =>
-            //    {
-            //        float powerDifference = float.MaxValue;
-            //        if (float.TryParse(d.Power, out float devicePower))
-            //        {
-            //            powerDifference = (devicePower >= power)
-            //                                ? (devicePower - power)
-            //                                : float.MaxValue;
-            //        }
-
-            //        float currentDifference = float.MaxValue;
-            //        if (float.TryParse(d.Current, out float deviceCurrent))
-            //        {
-            //            currentDifference = (deviceCurrent >= current)
-            //                                  ? (deviceCurrent - current)
-            //                                  : float.MaxValue;
-            //        }
-            //        return powerDifference + currentDifference;
-            //    })
-            //    .FirstOrDefault();
-            //return bestDeviceOverall;
-
-
-
             Device bestDeviceOverall = filteredDevices
                 .Where(d =>
                 {
                     if (float.TryParse(d.Power, out float devicePower))
                     {
-                        return devicePower >= power; // мощность должна быть >= power
+                        return devicePower >= power; // мощность >= power
                     }
                     return false; 
                 })
@@ -606,9 +608,9 @@ namespace ClassLibrary_PESK2
             try
             {
                 sheet_2.AddMergedRegion(new CellRangeAddress(1, 1, 1, 5));   // объединение
-                //sheet_2.AddMergedRegion(new NPOI.SS.Util.CellRangeAddress(2, 3, 2, 2));
-                //sheet_2.AddMergedRegion(new NPOI.SS.Util.CellRangeAddress(4, 5, 2, 2));
-  
+                                                                             //sheet_2.AddMergedRegion(new CellRangeAddress(2, 3, 2, 2));
+                                                                             //sheet_2.AddMergedRegion(new NPOI.SS.Util.CellRangeAddress(4, 5, 2, 2));
+
 
                 sheet_2.GetRow(1).GetCell(1).SetCellValue("Коммерческое предложение");
                 sheet_2.GetRow(1).GetCell(1).CellStyle = centerAlignedStyle;
@@ -816,5 +818,6 @@ namespace ClassLibrary_PESK2
                 return null;
             }
         }
+
     }
 }
