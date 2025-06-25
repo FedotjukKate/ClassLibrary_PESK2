@@ -64,12 +64,12 @@
             this.comboBox7 = new System.Windows.Forms.ComboBox();
             this.tabPage3 = new System.Windows.Forms.TabPage();
             this.button23 = new System.Windows.Forms.Button();
-            this.textBox6 = new System.Windows.Forms.TextBox();
+            this.textBox24 = new System.Windows.Forms.TextBox();
             this.label24 = new System.Windows.Forms.Label();
             this.button22 = new System.Windows.Forms.Button();
-            this.textBox5 = new System.Windows.Forms.TextBox();
+            this.textBox23 = new System.Windows.Forms.TextBox();
             this.button21 = new System.Windows.Forms.Button();
-            this.textBox4 = new System.Windows.Forms.TextBox();
+            this.textBox22 = new System.Windows.Forms.TextBox();
             this.textBox21 = new System.Windows.Forms.TextBox();
             this.label23 = new System.Windows.Forms.Label();
             this.label22 = new System.Windows.Forms.Label();
@@ -471,19 +471,19 @@
             // tabPage3
             // 
             this.tabPage3.Controls.Add(this.button23);
-            this.tabPage3.Controls.Add(this.textBox6);
+            this.tabPage3.Controls.Add(this.textBox24);
             this.tabPage3.Controls.Add(this.label24);
             this.tabPage3.Controls.Add(this.button22);
-            this.tabPage3.Controls.Add(this.textBox5);
+            this.tabPage3.Controls.Add(this.textBox23);
             this.tabPage3.Controls.Add(this.button21);
-            this.tabPage3.Controls.Add(this.textBox4);
+            this.tabPage3.Controls.Add(this.textBox22);
             this.tabPage3.Controls.Add(this.textBox21);
             this.tabPage3.Controls.Add(this.label23);
             this.tabPage3.Controls.Add(this.label22);
             this.tabPage3.Controls.Add(this.label21);
             this.tabPage3.Location = new System.Drawing.Point(4, 25);
             this.tabPage3.Name = "tabPage3";
-            this.tabPage3.Size = new System.Drawing.Size(765, 590);
+            this.tabPage3.Size = new System.Drawing.Size(765, 594);
             this.tabPage3.TabIndex = 2;
             this.tabPage3.Text = "Инженер";
             this.tabPage3.UseVisualStyleBackColor = true;
@@ -496,13 +496,14 @@
             this.button23.TabIndex = 33;
             this.button23.Text = "Поиск";
             this.button23.UseVisualStyleBackColor = true;
+            this.button23.Click += new System.EventHandler(this.button23_Click);
             // 
-            // textBox6
+            // textBox24
             // 
-            this.textBox6.Location = new System.Drawing.Point(31, 300);
-            this.textBox6.Name = "textBox6";
-            this.textBox6.Size = new System.Drawing.Size(569, 22);
-            this.textBox6.TabIndex = 32;
+            this.textBox24.Location = new System.Drawing.Point(31, 300);
+            this.textBox24.Name = "textBox24";
+            this.textBox24.Size = new System.Drawing.Size(569, 22);
+            this.textBox24.TabIndex = 32;
             // 
             // label24
             // 
@@ -521,13 +522,14 @@
             this.button22.TabIndex = 30;
             this.button22.Text = "Поиск";
             this.button22.UseVisualStyleBackColor = true;
+            this.button22.Click += new System.EventHandler(this.button22_Click);
             // 
-            // textBox5
+            // textBox23
             // 
-            this.textBox5.Location = new System.Drawing.Point(31, 220);
-            this.textBox5.Name = "textBox5";
-            this.textBox5.Size = new System.Drawing.Size(569, 22);
-            this.textBox5.TabIndex = 29;
+            this.textBox23.Location = new System.Drawing.Point(31, 220);
+            this.textBox23.Name = "textBox23";
+            this.textBox23.Size = new System.Drawing.Size(569, 22);
+            this.textBox23.TabIndex = 29;
             // 
             // button21
             // 
@@ -537,13 +539,14 @@
             this.button21.TabIndex = 28;
             this.button21.Text = "Поиск";
             this.button21.UseVisualStyleBackColor = true;
+            this.button21.Click += new System.EventHandler(this.button21_Click);
             // 
-            // textBox4
+            // textBox22
             // 
-            this.textBox4.Location = new System.Drawing.Point(31, 140);
-            this.textBox4.Name = "textBox4";
-            this.textBox4.Size = new System.Drawing.Size(569, 22);
-            this.textBox4.TabIndex = 27;
+            this.textBox22.Location = new System.Drawing.Point(31, 140);
+            this.textBox22.Name = "textBox22";
+            this.textBox22.Size = new System.Drawing.Size(569, 22);
+            this.textBox22.TabIndex = 27;
             // 
             // textBox21
             // 
@@ -744,17 +747,17 @@
         private System.Windows.Forms.ComboBox comboBox31;
         private System.Windows.Forms.Label label18;
         private System.Windows.Forms.TabPage tabPage3;
-        private System.Windows.Forms.TextBox textBox4;
+        private System.Windows.Forms.TextBox textBox22;
         private System.Windows.Forms.TextBox textBox21;
         private System.Windows.Forms.Label label23;
         private System.Windows.Forms.Label label22;
         private System.Windows.Forms.Label label21;
         private System.Windows.Forms.Button button21;
         private System.Windows.Forms.Button button23;
-        private System.Windows.Forms.TextBox textBox6;
+        private System.Windows.Forms.TextBox textBox24;
         private System.Windows.Forms.Label label24;
         private System.Windows.Forms.Button button22;
-        private System.Windows.Forms.TextBox textBox5;
+        private System.Windows.Forms.TextBox textBox23;
         private System.Windows.Forms.Button button1;
         private System.Windows.Forms.Button button2;
         private System.Windows.Forms.Button button4;

@@ -26,6 +26,8 @@ using System.Globalization;
 using Eplan.EplApi.ApplicationFramework;
 using Eplan.EplApi.DataModel;
 using static Eplan.EplApi.EServices.IMessage;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
+
 
 namespace ClassLibrary_PESK2
 {
@@ -62,11 +64,66 @@ namespace ClassLibrary_PESK2
             checkBox1.CheckedChanged += ParameterChanged;
         }
 
+        //// Полезные кнопки ////
         private void button1_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("Кнопка 1", "Предупреждение");
-            button2.Enabled = true;
-            button3.Enabled = true;
+            if (!string.IsNullOrEmpty(textBox21.Text) && !string.IsNullOrEmpty(textBox22.Text)
+                && !string.IsNullOrEmpty(textBox23.Text) && !string.IsNullOrEmpty(textBox24.Text))
+            {
+                button2.Enabled = true;
+                button3.Enabled = true;
+
+                string projectName = textBox21.Text;
+
+                // путь к папке для хранения
+                string documentsPath = textBox22.Text;
+                string projectDirectory = Path.Combine(documentsPath, projectName);
+
+                // Путь к проекту полный
+                string projectPath = Path.Combine(projectDirectory, projectName + ".elk");
+
+
+                // Проверяем, существует ли папка. Если нет - создаем
+                if (!Directory.Exists(projectDirectory))
+                {
+                    Directory.CreateDirectory(projectDirectory);
+                }
+
+                // EPLAN
+                try
+                {
+                    string templatesPath = textBox23.Text;
+
+                    using (SafetyPoint safetyPoint = SafetyPoint.Create())
+                    {
+                        // Cоздание проекта
+                        ProjectManager projectManager = new ProjectManager();
+                        Project oProject = projectManager.CreateProject(projectPath, templatesPath);
+
+                        Create_Pages(oProject);
+
+                        if (oProject != null)
+                        {
+                            MessageBox.Show($"Проект EPLAN \"{projectName}\" успешно создан в папке: {projectDirectory}", "Успешно");
+                        }
+                        else
+                        {
+                            MessageBox.Show($"Не удалось создать проект EPLAN \"{projectName}\"", "Ошибка");
+                        }
+                        safetyPoint.Commit();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка при создании проекта EPLAN: {ex.Message}", "Ошибка!");
+                }
+            }
+            else
+            {
+                MessageBox.Show("Заполните все поля вкладки 'Инженер'. ", "Предупреждение");
+            }
+
+
         }
 
         private void button2_Click(object sender, EventArgs e)
@@ -86,6 +143,95 @@ namespace ClassLibrary_PESK2
         }
 
 
+        //// Кнопки поиска ////
+        private void button21_Click(object sender, EventArgs e)
+        {
+            FolderBrowserDialog of = new FolderBrowserDialog();
+            of.Description = "Выберите папку для сохранения проекта:";
+            if (of.ShowDialog() == DialogResult.OK)
+            {
+                string folderPath = of.SelectedPath;
+                textBox22.Text = folderPath;
+                textBox22.SelectionStart = textBox21.Text.Length;
+                textBox22.SelectionLength = 0;
+            }
+        }
+
+        private void button22_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog of = new OpenFileDialog();
+            of.Filter = "Файлы EPLAN|*.ept;*.epb;*.zw9";
+            if (of.ShowDialog() == DialogResult.OK)
+            {
+                string filePath = of.FileName;
+                textBox23.Text = filePath;
+                textBox23.SelectionStart = textBox1.Text.Length;
+                textBox23.SelectionLength = 0;
+            }
+        }
+
+        private void button23_Click(object sender, EventArgs e)
+        {
+            var of = new FolderPicker();
+            of.Multiselect = false;
+            if (of.ShowDialog(IntPtr.Zero) == true)
+            {
+                string folderPath = of.ResultPath;
+                textBox24.Text = folderPath;
+                textBox24.SelectionStart = textBox21.Text.Length;
+                textBox24.SelectionLength = 0;
+            }
+        }
+
+
+
+        //// Бесполезные кнопки ////
+        /////private void button2_Click(object sender, EventArgs e)
+        //{
+        //    string projectName = "NewEplanProject";
+
+        //    // путь к папке "Документы"
+        //    string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        //    string documentsPath = Path.Combine(desktopPath, "Документы");
+        //    string projectDirectory = Path.Combine(documentsPath, projectName);
+
+        //    // Путь к проекту полный
+        //    string projectPath = Path.Combine(projectDirectory, projectName + ".elk");
+
+
+        //    // Проверяем, существует ли папка. Если нет - создаем
+        //    if (!Directory.Exists(projectDirectory))
+        //    {
+        //        Directory.CreateDirectory(projectDirectory);
+        //    }
+
+        //    // EPLAN
+        //    try
+        //    {
+        //        string templatesPath = "$(MD_TEMPLATES)\\IEC_bas003.zw9";  
+
+        //        using (SafetyPoint safetyPoint = SafetyPoint.Create())
+        //        {
+        //            // Cоздание проекта
+        //            ProjectManager projectManager = new ProjectManager();
+        //            Project oProject = projectManager.CreateProject(projectPath, templatesPath);
+
+        //            if (oProject != null)
+        //            {
+        //                MessageBox.Show($"Проект EPLAN \"{projectName}\" успешно создан в папке: {projectDirectory}", "Успешно");
+        //            }
+        //            else
+        //            {
+        //                MessageBox.Show($"Не удалось создать проект EPLAN \"{projectName}\"", "Ошибка");
+        //            }
+        //            safetyPoint.Commit();
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        MessageBox.Show($"Ошибка при создании проекта EPLAN: {ex.Message}", "Ошибка!");
+        //    }
+        //}
         private async void button0_Click(object sender, EventArgs e)
         {
             string article = "";
@@ -193,52 +339,54 @@ namespace ClassLibrary_PESK2
             }
         }
 
-        //private void button2_Click(object sender, EventArgs e)
-        //{
-        //    string projectName = "NewEplanProject";
 
-        //    // путь к папке "Документы"
-        //    string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-        //    string documentsPath = Path.Combine(desktopPath, "Документы");
-        //    string projectDirectory = Path.Combine(documentsPath, projectName);
+        //// Доп функции ////
+        private void Create_Pages(Project oProject)
+        {
+            MessageBox.Show("fffffffffffff");
+            //Установка иерархии:
+            PagePropertyList name_parts = new PagePropertyList();
 
-        //    // Путь к проекту полный
-        //    string projectPath = Path.Combine(projectDirectory, projectName + ".elk");
+            name_parts.DESIGNATION_USERDEFINED.Set("DESIGNATION_USERDEFINED");
+            name_parts.DESIGNATION_INSTALLATIONNUMBER.Set("DESIGNATION_INSTALLATIONNUMBER");
+            name_parts.DESIGNATION_FUNCTIONALASSIGNMENT.Set("DESIGNATION_FUNCTIONALASSIGNMENT");
+            name_parts.DESIGNATION_PLANT.Set("DESIGNATION_PLANT");
+            name_parts.DESIGNATION_PLACEOFINSTALLATION.Set("DESIGNATION_PLACEOFINSTALLATION");
+            name_parts.DESIGNATION_LOCATION.Set("DESIGNATION_LOCATION");
+            name_parts.DESIGNATION_DOCTYPE.Set("Э3");
+
+            try { name_parts.PAGE_COUNTER.Set(1); }
+            catch (Exception ex) { MessageBox.Show($"Ошибка при создании иерархии: {ex.Message}", "Ошибка!"); }
 
 
-        //    // Проверяем, существует ли папка. Если нет - создаем
-        //    if (!Directory.Exists(projectDirectory))
-        //    {
-        //        Directory.CreateDirectory(projectDirectory);
-        //    }
+            MessageBox.Show(
+             $"DESIGNATION_USERDEFINED: {name_parts.DESIGNATION_USERDEFINED.ToString()}\n" +
+             $"DESIGNATION_INSTALLATIONNUMBER: {name_parts.DESIGNATION_INSTALLATIONNUMBER.ToString()}\n" +
+             $"DESIGNATION_FUNCTIONALASSIGNMENT: {name_parts.DESIGNATION_FUNCTIONALASSIGNMENT.ToString()}\n" +
+             $"DESIGNATION_PLANT: {name_parts.DESIGNATION_PLANT.ToString()}\n" +
+             $"DESIGNATION_PLACEOFINSTALLATION: {name_parts.DESIGNATION_PLACEOFINSTALLATION.ToString()}\n" +
+             $"DESIGNATION_LOCATION: {name_parts.DESIGNATION_LOCATION.ToString()}\n" +
+             $"DESIGNATION_DOCTYPE: {name_parts.DESIGNATION_DOCTYPE.ToString()}\n" +
+             $"PAGE_COUNTER: {name_parts.PAGE_COUNTER.ToString()}",
+             "Значения name_parts");
 
-        //    // EPLAN
-        //    try
-        //    {
-        //        string templatesPath = "$(MD_TEMPLATES)\\IEC_bas003.zw9";  
 
-        //        using (SafetyPoint safetyPoint = SafetyPoint.Create())
-        //        {
-        //            // Cоздание проекта
-        //            ProjectManager projectManager = new ProjectManager();
-        //            Project oProject = projectManager.CreateProject(projectPath, templatesPath);
 
-        //            if (oProject != null)
-        //            {
-        //                MessageBox.Show($"Проект EPLAN \"{projectName}\" успешно создан в папке: {projectDirectory}", "Успешно");
-        //            }
-        //            else
-        //            {
-        //                MessageBox.Show($"Не удалось создать проект EPLAN \"{projectName}\"", "Ошибка");
-        //            }
-        //            safetyPoint.Commit();
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        MessageBox.Show($"Ошибка при создании проекта EPLAN: {ex.Message}", "Ошибка!");
-        //    }
-        //}
+            MessageBox.Show("tttttttttttttttttt");
+            // Создание страницы
+            Page NewPage = new Page();
+            NewPage.Create(oProject, DocumentTypeManager.DocumentType.Circuit, name_parts); //DocumentTypeManager.DocumentType.Circuit - это многопол. схема соединения, хз какая тебе нужна
+
+            MessageBox.Show("pppppppppppp");
+            NewPage.Properties.PAGE_FORMPLOT.Set("ЕСКД_A3_Форма_2а_Описание_страницы_v4.0"); //это "Имя рамки"
+            try { NewPage.Properties[11011] = "Раскладка ПЛК 1"; } //описание страницы - самое видимое имя
+            catch { }
+
+            MessageBox.Show("iiiiiiiiiiiiiii");
+            //NewPage.NameParts
+            //считывать все эти свойства: NewPage.NameParts.DESIGNATION_INSTALLATIONNUMBER.ToString();
+        }
+
 
         private void LoadDataFromDatabase()
         {
