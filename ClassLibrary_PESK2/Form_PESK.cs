@@ -29,7 +29,8 @@ using static Eplan.EplApi.EServices.IMessage;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
 using static Eplan.EplApi.Base.ISOCode;
 using Eplan.EplApi.HEServices;
-
+using System.Security.Cryptography;
+using static Eplan.EplApi.DataModel.Properties;
 
 
 namespace ClassLibrary_PESK2
@@ -38,6 +39,7 @@ namespace ClassLibrary_PESK2
     {
         private List<Device> devices = new List<Device>();
         private Device foundDevice;
+        private bool flagNormal = true;
 
         public Form_PESK()
         {
@@ -49,6 +51,7 @@ namespace ClassLibrary_PESK2
             comboBox5.SelectedIndex = 0;
             comboBox7.SelectedIndex = 0;
             comboBox8.SelectedIndex = 0;
+            comboBox9.SelectedIndex = 0;
 
             checkBox1.Checked = true;
             comboBox6.Enabled = !checkBox1.Checked;
@@ -56,11 +59,12 @@ namespace ClassLibrary_PESK2
 
             // Загрузка данных из базы
             LoadDataFromDatabase();
-            //DisplayDeviceInfo();
+            DisplayDeviceInfo();
             UpdateDeviceList();
 
             // События изменения
             comboBox1.SelectedIndexChanged += ParameterChanged;
+            comboBox3.SelectedIndexChanged += ParameterChanged;
             comboBox5.SelectedIndexChanged += ParameterChanged;
             textBox1.TextChanged += ParameterChanged;
             textBox2.TextChanged += ParameterChanged;
@@ -70,61 +74,149 @@ namespace ClassLibrary_PESK2
         //// Полезные кнопки ////
         private void button1_Click(object sender, EventArgs e)
         {
-            if (!string.IsNullOrEmpty(textBox21.Text) && !string.IsNullOrEmpty(textBox22.Text)
-                && !string.IsNullOrEmpty(textBox23.Text) && !string.IsNullOrEmpty(textBox24.Text))
+            string article = "";
+            string discribe = "";
+            string series = comboBox1.SelectedItem.ToString();
+            string power = textBox1.Text.Trim();
+            string current = textBox2.Text.Trim();
+            string voltage = comboBox5.SelectedItem.ToString();
+
+            //Ищем ПЧ
+            if (checkBox1.Checked)
             {
-                button2.Enabled = true;
-                button3.Enabled = true;
-
-                string projectName = textBox21.Text;
-
-                // путь к папке для хранения
-                string documentsPath = textBox22.Text;
-                string projectDirectory = Path.Combine(documentsPath, projectName);
-
-                // Путь к проекту полный
-                string projectPath = Path.Combine(projectDirectory, projectName + ".elk");
-
-
-                // Проверяем, существует ли папка. Если нет - создаем
-                if (!Directory.Exists(projectDirectory))
+                // Проверка
+                if (string.IsNullOrEmpty(power) || string.IsNullOrEmpty(current) || string.IsNullOrEmpty(voltage))
                 {
-                    Directory.CreateDirectory(projectDirectory);
+                    MessageBox.Show("Пожалуйста, заполните все поля: мощность, ток и напряжение.", "Предупреждение");
+                    return;
                 }
 
-                // EPLAN
-                try
+                if (!float.TryParse(power, out float powerInt))
                 {
-                    string templatesPath = textBox23.Text;
-
-                    using (SafetyPoint safetyPoint = SafetyPoint.Create())
-                    {
-                        // Cоздание проекта
-                        ProjectManager projectManager = new ProjectManager();
-                        Project oProject = projectManager.CreateProject(projectPath, templatesPath);
-
-                        //Create_Pages(oProject);
-
-                        if (oProject != null)
-                        {
-                            MessageBox.Show($"Проект EPLAN \"{projectName}\" успешно создан в папке: {projectDirectory}", "Успешно");
-                        }
-                        else
-                        {
-                            MessageBox.Show($"Не удалось создать проект EPLAN \"{projectName}\"", "Ошибка");
-                        }
-                        safetyPoint.Commit();
-                    }
+                    MessageBox.Show("Некорректный формат мощности. Введите число.", "Предупреждение");
+                    return;
                 }
-                catch (Exception ex)
+
+                if (!float.TryParse(current, out float currentInt))
                 {
-                    MessageBox.Show($"Ошибка при создании проекта EPLAN: {ex.Message}", "Ошибка!");
+                    MessageBox.Show("Некорректный формат тока. Введите число.", "Предупреждение");
+                    return;
+                }
+
+                // Идеальное
+                if (flagNormal)
+                {
+                    foundDevice = devices.FirstOrDefault(d =>
+                    d.Number.Contains(series) &&
+                    d.Power == power &&
+                    d.NormalCurrent == current &&
+                    d.Voltage == voltage);
+                }
+                else
+                {
+                    foundDevice = devices.FirstOrDefault(d =>
+                    d.Number.Contains(series) &&
+                    d.Power == power &&
+                    d.OverloadCurrent == current &&
+                    d.Voltage == voltage);
+                }
+
+                // Ближайшее
+                if (foundDevice == null)
+                {
+                    if (flagNormal) { foundDevice = FindDeviceNormal(series, voltage, powerInt, currentInt); }
+                    else { foundDevice = FindDeviceOverload(series, voltage, powerInt, currentInt); }
+                }
+
+                if (foundDevice != null)
+                {
+                    article = foundDevice.Number;
+                    discribe = foundDevice.Discribe;
+                    MessageBox.Show($"Найден номер устройства: {foundDevice.Number}");
+                }
+                else
+                {
+                    MessageBox.Show("Устройство с указанными параметрами не найдено.", "Ошибка");
                 }
             }
             else
             {
-                MessageBox.Show("Заполните все поля вкладки 'Инженер'. ", "Предупреждение");
+                if (!string.IsNullOrEmpty(comboBox6.SelectedItem.ToString()))
+                {
+                    article = comboBox6.SelectedItem.ToString();
+                    foundDevice = devices.FirstOrDefault(d => d.Number == article);
+                    discribe = foundDevice.Discribe;
+                    MessageBox.Show($"Найден номер устройства: {article}");
+                }
+                else
+                {
+                    MessageBox.Show("Выберите устройство из списка или поставьте автоподбор.", "Предупреждение");
+                }
             }
+
+
+
+            //Ищем Предохранитель
+            if (foundDevice != null)
+            {
+                FindProtection(float.Parse(foundDevice.Power));
+            }
+
+            //if (!string.IsNullOrEmpty(textBox21.Text) && !string.IsNullOrEmpty(textBox22.Text)
+            //    && !string.IsNullOrEmpty(textBox23.Text) && !string.IsNullOrEmpty(textBox24.Text))
+            //{
+            //    button2.Enabled = true;
+            //    button3.Enabled = true;
+
+            //    string projectName = textBox21.Text;
+
+            //    // путь к папке для хранения
+            //    string documentsPath = textBox22.Text;
+            //    string projectDirectory = Path.Combine(documentsPath, projectName);
+
+            //    // Путь к проекту полный
+            //    string projectPath = Path.Combine(projectDirectory, projectName + ".elk");
+
+
+            //    // Проверяем, существует ли папка. Если нет - создаем
+            //    if (!Directory.Exists(projectDirectory))
+            //    {
+            //        Directory.CreateDirectory(projectDirectory);
+            //    }
+
+            //    // EPLAN
+            //    try
+            //    {
+            //        string templatesPath = textBox23.Text;
+
+            //        using (SafetyPoint safetyPoint = SafetyPoint.Create())
+            //        {
+            //            // Cоздание проекта
+            //            ProjectManager projectManager = new ProjectManager();
+            //            Eplan.EplApi.DataModel.Project oProject = projectManager.CreateProject(projectPath, templatesPath);
+
+            //            //Create_Pages(oProject);
+
+            //            if (oProject != null)
+            //            {
+            //                MessageBox.Show($"Проект EPLAN \"{projectName}\" успешно создан в папке: {projectDirectory}", "Успешно");
+            //            }
+            //            else
+            //            {
+            //                MessageBox.Show($"Не удалось создать проект EPLAN \"{projectName}\"", "Ошибка");
+            //            }
+            //            safetyPoint.Commit();
+            //        }
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        MessageBox.Show($"Ошибка при создании проекта EPLAN: {ex.Message}", "Ошибка!");
+            //    }
+            //}
+            //else
+            //{
+            //    MessageBox.Show("Заполните все поля вкладки 'Инженер'. ", "Предупреждение");
+            //}
 
 
         }
@@ -235,114 +327,116 @@ namespace ClassLibrary_PESK2
         //        MessageBox.Show($"Ошибка при создании проекта EPLAN: {ex.Message}", "Ошибка!");
         //    }
         //}
-        private async void button0_Click(object sender, EventArgs e)
-        {
-            string article = "";
-            string discribe = "";
-            string series = comboBox1.SelectedItem.ToString();
-            string power = textBox1.Text.Trim();
-            string current = textBox2.Text.Trim();
-            string voltage = comboBox5.SelectedItem.ToString();
 
-            if (checkBox1.Checked)
-            {
-                // Проверка
-                if (string.IsNullOrEmpty(power) || string.IsNullOrEmpty(current) || string.IsNullOrEmpty(voltage))
-                {
-                    MessageBox.Show("Пожалуйста, заполните все поля: мощность, ток и напряжение.", "Предупреждение");
-                    return;
-                }
 
-                if (!float.TryParse(power, out float powerInt))
-                {
-                    MessageBox.Show("Некорректный формат мощности. Введите число.", "Предупреждение");
-                    return;
-                }
+        //private async void button0_Click(object sender, EventArgs e)
+        //{
+        //    string article = "";
+        //    string discribe = "";
+        //    string series = comboBox1.SelectedItem.ToString();
+        //    string power = textBox1.Text.Trim();
+        //    string current = textBox2.Text.Trim();
+        //    string voltage = comboBox5.SelectedItem.ToString();
 
-                if (!float.TryParse(current, out float currentInt))
-                {
-                    MessageBox.Show("Некорректный формат тока. Введите число.", "Предупреждение");
-                    return;
-                }
+        //    if (checkBox1.Checked)
+        //    {
+        //        // Проверка
+        //        if (string.IsNullOrEmpty(power) || string.IsNullOrEmpty(current) || string.IsNullOrEmpty(voltage))
+        //        {
+        //            MessageBox.Show("Пожалуйста, заполните все поля: мощность, ток и напряжение.", "Предупреждение");
+        //            return;
+        //        }
 
-                // Идеальное
-                foundDevice = devices.FirstOrDefault(d =>
-                    d.Number.Contains(series) &&
-                    d.Power == power &&
-                    d.Current == current &&
-                    d.Voltage == voltage);
+        //        if (!float.TryParse(power, out float powerInt))
+        //        {
+        //            MessageBox.Show("Некорректный формат мощности. Введите число.", "Предупреждение");
+        //            return;
+        //        }
 
-                // Ближайшее
-                if (foundDevice == null)
-                {
-                    foundDevice = FindDevice(series, voltage, powerInt, currentInt);
-                }
+        //        if (!float.TryParse(current, out float currentInt))
+        //        {
+        //            MessageBox.Show("Некорректный формат тока. Введите число.", "Предупреждение");
+        //            return;
+        //        }
 
-                if (foundDevice != null)
-                {
-                    article = foundDevice.Number;
-                    discribe = foundDevice.Discribe;
-                    //MessageBox.Show($"Найден номер устройства: {foundDevice.Number}");
-                }
-                else
-                {
-                    MessageBox.Show("Устройство с указанными параметрами не найдено.", "Ошибка");
-                }
-            }
-            else
-            {
-                if (!string.IsNullOrEmpty(comboBox6.SelectedItem.ToString()))
-                {
-                    article = comboBox6.SelectedItem.ToString();
-                    foundDevice = devices.FirstOrDefault(d => d.Number == article);
-                    discribe = foundDevice.Discribe;
-                    //MessageBox.Show($"Найден номер устройства: {article}");
-                }
-                else
-                {
-                    MessageBox.Show("Выберите устройство из списка или поставьте автоподбор.", "Предупреждение");
-                }
-            }
+        //        // Идеальное
+        //        foundDevice = devices.FirstOrDefault(d =>
+        //            d.Number.Contains(series) &&
+        //            d.Power == power &&
+        //            d.Current == current &&
+        //            d.Voltage == voltage);
 
-            /////////// Пытаемся парсить сайты ///////////
-            string price = await GetPriceFromDrivesRu(article);
-            if (!string.IsNullOrEmpty(article))
-            {
-                if (!string.IsNullOrEmpty(price))
-                {
-                    //MessageBox.Show($"Цена для артикула {article}: {price}", "Цена");
-                }
-                else
-                {
-                    price = "Нет на складе";
-                    MessageBox.Show($"Не удалось получить цену для артикула {article}.", "Предупреждение");
-                }
+        //        // Ближайшее
+        //        if (foundDevice == null)
+        //        {
+        //            foundDevice = FindDevice(series, voltage, powerInt, currentInt);
+        //        }
 
-                /////////// Книга 1 ///////////
-                try
-                {
-                    CreateBook();  // Функция создания книги 1
-                    MessageBox.Show("Файл 1 успешно сохранен", "Уведомление");
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("Произошла ошибка при создании Excel-файла: " + ex.Message);
-                }
+        //        if (foundDevice != null)
+        //        {
+        //            article = foundDevice.Number;
+        //            discribe = foundDevice.Discribe;
+        //            //MessageBox.Show($"Найден номер устройства: {foundDevice.Number}");
+        //        }
+        //        else
+        //        {
+        //            MessageBox.Show("Устройство с указанными параметрами не найдено.", "Ошибка");
+        //        }
+        //    }
+        //    else
+        //    {
+        //        if (!string.IsNullOrEmpty(comboBox6.SelectedItem.ToString()))
+        //        {
+        //            article = comboBox6.SelectedItem.ToString();
+        //            foundDevice = devices.FirstOrDefault(d => d.Number == article);
+        //            discribe = foundDevice.Discribe;
+        //            //MessageBox.Show($"Найден номер устройства: {article}");
+        //        }
+        //        else
+        //        {
+        //            MessageBox.Show("Выберите устройство из списка или поставьте автоподбор.", "Предупреждение");
+        //        }
+        //    }
 
-                /////////// Книга 2 ///////////
-                try
-                {
-                    CreateBook_2(price, article, discribe);  // Функция создания книги 2
-                    MessageBox.Show("Файл 2 успешно сохранен", "Уведомление");
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("Произошла ошибка при создании Excel-файла: " + ex.Message);
-                }
-            }
-        }
+        //    /////////// Пытаемся парсить сайты ///////////
+        //    string price = await GetPriceFromDrivesRu(article);
+        //    if (!string.IsNullOrEmpty(article))
+        //    {
+        //        if (!string.IsNullOrEmpty(price))
+        //        {
+        //            //MessageBox.Show($"Цена для артикула {article}: {price}", "Цена");
+        //        }
+        //        else
+        //        {
+        //            price = "Нет на складе";
+        //            MessageBox.Show($"Не удалось получить цену для артикула {article}.", "Предупреждение");
+        //        }
 
-        private void Create_Pages(Project oProject)
+        //        /////////// Книга 1 ///////////
+        //        try
+        //        {
+        //            CreateBook();  // Функция создания книги 1
+        //            MessageBox.Show("Файл 1 успешно сохранен", "Уведомление");
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            MessageBox.Show("Произошла ошибка при создании Excel-файла: " + ex.Message);
+        //        }
+
+        //        /////////// Книга 2 ///////////
+        //        try
+        //        {
+        //            CreateBook_2(price, article, discribe);  // Функция создания книги 2
+        //            MessageBox.Show("Файл 2 успешно сохранен", "Уведомление");
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            MessageBox.Show("Произошла ошибка при создании Excel-файла: " + ex.Message);
+        //        }
+        //    }
+        //}
+
+        private void Create_Pages(Eplan.EplApi.DataModel.Project oProject)
         {
             //Установка иерархии:
             PagePropertyList name_parts = new PagePropertyList();
@@ -357,7 +451,7 @@ namespace ClassLibrary_PESK2
             // Создание страницы
             try { name_parts.PAGE_COUNTER.Set(1); }
             catch (Exception ex) { MessageBox.Show($"Ошибка при создании иерархии: {ex.Message}", "Ошибка!"); }
-            Page Page_TL = new Page();
+            Eplan.EplApi.DataModel.Page Page_TL = new Eplan.EplApi.DataModel.Page();
             Page_TL.Create(oProject, DocumentTypeManager.DocumentType.TitlePage, name_parts);
             Page_TL.Properties.PAGE_FORMPLOT.Set("ЕСКД_A4_Титульный_лист_v3.0"); 
             try { Page_TL.Properties[11011] = "Титульный лист"; }
@@ -385,7 +479,7 @@ namespace ClassLibrary_PESK2
             name_parts.DESIGNATION_DOCTYPE.Set("ЭЗ");
             try { name_parts.PAGE_COUNTER.Set(1); }
             catch (Exception ex) { MessageBox.Show($"Ошибка при создании иерархии: {ex.Message}", "Ошибка!"); }
-            Page Page_SP_1 = new Page();
+            Eplan.EplApi.DataModel.Page Page_SP_1 = new Eplan.EplApi.DataModel.Page();
             Page_SP_1.Create(oProject, DocumentTypeManager.DocumentType.Circuit, name_parts);
             //Page_SP_1.Properties.PAGE_FORMPLOT = "ЕСКД_A3_Форма_1_v3.0";
             Page_SP_1.Properties.PAGE_FORMPLOT.Set("ЕСКД_A3_Форма_1_v3.0");
@@ -426,21 +520,25 @@ namespace ClassLibrary_PESK2
                 {
                     foreach (MDPart part in SubGroupParts)
                     {
+
+
                         // Производитель
                         string manufacturer = part.Properties.ARTICLE_MANUFACTURER;
                         manufacturer = manufacturer.ToLower();
                         if (manufacturer == "veda")
                         {
-                            if (!string.IsNullOrEmpty(part.PartNr) && part.PartNr.ToUpper().Contains("VF")) // Используем ToUpper() для игнорирования регистра
+                            if (!string.IsNullOrEmpty(part.PartNr) && part.PartNr.ToUpper().Contains("VF")) 
                             {
                                 // Создание объекта Device и заполнение его данными
                                 Device device = new Device();
                                 device.Number = part.PartNr;
                                 device.Voltage = part.Properties.ARTICLE_VOLTAGE;
-                                device.Current = part.Properties.ARTICLE_ELECTRICALCURRENT;
+                                //device.Current = part.Properties.ARTICLE_ELECTRICALCURRENT;
                                 string powerString = part.Properties.ARTICLE_CHARACTERISTICS.GetDisplayString().GetString(ISOCode.Language.L___);
                                 device.Power = powerString.Replace("кВт", "").Trim(); // Удаляем "кВт"
                                 device.Discribe = part.Properties.ARTICLE_NOTE.GetDisplayString().GetString(ISOCode.Language.L___);
+                                device.OverloadCurrent = part.Properties[22337][1].ToMultiLangString().GetString(0).Replace(".", ",");
+                                device.NormalCurrent = part.Properties[22337][2].ToMultiLangString().GetString(0).Replace(".", ",");
 
                                 devices.Add(device);
                             }
@@ -449,7 +547,7 @@ namespace ClassLibrary_PESK2
                 }
                 else
                 {
-                    MessageBox.Show("Не найдены изделия, соответствующие заданным критериям.", "Предупреждение");
+                    MessageBox.Show("Не найдены ПЧ, соответствующие заданным критериям.", "Предупреждение");
                 }
             }
             catch (Exception ex)
@@ -483,7 +581,8 @@ namespace ClassLibrary_PESK2
             {
                 foreach (Device device in devices)
                 {
-                    deviceInfo += $"Номер: {device.Number}, Напряжение: {device.Voltage}, Мощность: {device.Power}, Ток: {device.Current}\r\n";
+                    deviceInfo += $"Номер: {device.Number}, Напряжение: {device.Voltage}, Мощность: {device.Power},\r\n" +
+                        $" Ток выс перегрузки: {device.OverloadCurrent}, Ток норм перегрузки: {device.NormalCurrent}\r\n";
                 }
             }
             else
@@ -493,11 +592,12 @@ namespace ClassLibrary_PESK2
             MessageBox.Show("Информация об устройствах:\r\n" + deviceInfo);
         }
 
-        private Device FindDevice(string series, string voltage, float power, float current)
+        private Device FindDeviceNormal(string series, string voltage, float power, float current)
         {
+            MessageBox.Show("Ищем по нормальному");
             // Серия и напряжение
             var filteredDevices = devices.Where(d => d.Number.Contains(series) && d.Voltage == voltage
-            && !string.IsNullOrEmpty(d.Power) && !string.IsNullOrEmpty(d.Current)).ToList();
+            && !string.IsNullOrEmpty(d.Power) && !string.IsNullOrEmpty(d.NormalCurrent)).ToList();
 
             if (!filteredDevices.Any()) { return null; }
 
@@ -517,7 +617,7 @@ namespace ClassLibrary_PESK2
                 Device bestDeviceByCurrent = samePowerDevices
                     .OrderBy(d =>
                     {
-                        if (float.TryParse(d.Current, out float deviceCurrent))
+                        if (float.TryParse(d.NormalCurrent, out float deviceCurrent))
                         {
                             float currentDifference = (deviceCurrent >= current)
                                                       ? (deviceCurrent - current)
@@ -527,7 +627,7 @@ namespace ClassLibrary_PESK2
                         return float.MaxValue;
                     })
                     .FirstOrDefault();
-                if (float.Parse(bestDeviceByCurrent.Current) > current)
+                if (float.Parse(bestDeviceByCurrent.NormalCurrent) > current)
                 {
                     return bestDeviceByCurrent;
                 }
@@ -537,7 +637,7 @@ namespace ClassLibrary_PESK2
             // По току
             var sameCurrentDevices = filteredDevices.Where(d =>
             {
-                if (float.TryParse(d.Current, out float deviceCurrent))
+                if (float.TryParse(d.NormalCurrent, out float deviceCurrent))
                 {
                     return deviceCurrent == current;
                 }
@@ -577,7 +677,7 @@ namespace ClassLibrary_PESK2
                 })
                 .OrderBy(d =>
                 {
-                    if (float.TryParse(d.Current, out float deviceCurrent))
+                    if (float.TryParse(d.NormalCurrent, out float deviceCurrent))
                     {
                         // Разница только по току
                         return (deviceCurrent >= current)
@@ -590,6 +690,199 @@ namespace ClassLibrary_PESK2
             return bestDeviceOverall;
         }
 
+        private Device FindDeviceOverload(string series, string voltage, float power, float current)
+        {
+            MessageBox.Show("Ищем по высокому");
+            // Серия и напряжение
+            var filteredDevices = devices.Where(d => d.Number.Contains(series) && d.Voltage == voltage
+            && !string.IsNullOrEmpty(d.Power) && !string.IsNullOrEmpty(d.OverloadCurrent)).ToList();
+
+            if (!filteredDevices.Any()) { return null; }
+
+            //MessageBox.Show("рррррррр");
+            // По мощности
+            var samePowerDevices = filteredDevices.Where(d =>
+            {
+                if (float.TryParse(d.Power, out float devicePower))
+                {
+                    return devicePower == power;
+                }
+                return false; // Игнорируем, если не удалось распарсить мощность
+            }).ToList();
+
+            if (samePowerDevices.Any())
+            {
+                Device bestDeviceByCurrent = samePowerDevices
+                    .OrderBy(d =>
+                    {
+                        if (float.TryParse(d.OverloadCurrent, out float deviceCurrent))
+                        {
+                            float currentDifference = (deviceCurrent >= current)
+                                                      ? (deviceCurrent - current)
+                                                      : float.MaxValue;
+                            return currentDifference;
+                        }
+                        return float.MaxValue;
+                    })
+                    .FirstOrDefault();
+                if (float.Parse(bestDeviceByCurrent.OverloadCurrent) > current)
+                {
+                    return bestDeviceByCurrent;
+                }
+            }
+
+            //MessageBox.Show("дддддддддд");
+            // По току
+            var sameCurrentDevices = filteredDevices.Where(d =>
+            {
+                if (float.TryParse(d.OverloadCurrent, out float deviceCurrent))
+                {
+                    return deviceCurrent == current;
+                }
+                return false;
+            }).ToList();
+            if (sameCurrentDevices.Any())
+            {
+                Device bestDeviceByPower = sameCurrentDevices
+                    .OrderBy(d =>
+                    {
+                        if (float.TryParse(d.Power, out float devicePower))
+                        {
+                            float powerDifference = (devicePower >= power)
+                                                     ? (devicePower - power)
+                                                     : float.MaxValue;
+
+                            return powerDifference;
+                        }
+                        return float.MaxValue;
+                    })
+                    .FirstOrDefault();
+                if (float.Parse(bestDeviceByPower.Power) > power)
+                {
+                    return bestDeviceByPower;
+                }
+            }
+
+            //MessageBox.Show("ааааааааааааааааа");
+            Device bestDeviceOverall = filteredDevices
+                .Where(d =>
+                {
+                    if (float.TryParse(d.Power, out float devicePower))
+                    {
+                        return devicePower >= power; // мощность >= power
+                    }
+                    return false;
+                })
+                .OrderBy(d =>
+                {
+                    if (float.TryParse(d.OverloadCurrent, out float deviceCurrent))
+                    {
+                        MessageBox.Show(deviceCurrent.ToString());
+                        // Разница только по току
+                        return (deviceCurrent >= current)
+                                   ? (deviceCurrent - current)
+                                   : float.MaxValue;
+                    }
+                    return float.MaxValue;
+                })
+                .FirstOrDefault();
+            return bestDeviceOverall;
+        }
+
+        private void FindProtection(float power)
+        {
+            string type = comboBox9.Text.Trim();
+            bool find = false;
+
+            MDPartsDatabase partsDatabase = null;
+            try
+            {
+                MDPartsManagement oPartsManagement = new MDPartsManagement();
+                partsDatabase = oPartsManagement.OpenDatabase();
+
+                if (partsDatabase == null)
+                {
+                    MessageBox.Show("Не удалось открыть базу данных изделий.", "Ошибка");
+                    return;
+                }
+
+                MDPartsDatabaseItemPropertyList filter = new MDPartsDatabaseItemPropertyList();
+                filter.ARTICLE_PRODUCTGROUP = "6";
+                if (type == "Защитный выключатель") { filter.ARTICLE_PRODUCTSUBGROUP = "193"; }
+                else if (type == "Плавкий предохранитель") { filter.ARTICLE_PRODUCTSUBGROUP = "192"; }
+
+                MDPartsDatabaseItemPropertyList properties = new MDPartsDatabaseItemPropertyList();
+                MDPart[] SubGroupParts = partsDatabase.GetParts(filter, properties);
+
+                if (SubGroupParts != null && SubGroupParts.Length > 0)
+                {
+                    foreach (MDPart part in SubGroupParts)
+                    {
+                        // Производитель
+                        string manufacturer = part.Properties.ARTICLE_MANUFACTURER;
+                        manufacturer = manufacturer.ToLower();
+                        if (manufacturer == comboBox2.Text.Trim().ToLower())
+                        {
+                            if (!string.IsNullOrEmpty(part.PartNr))
+                            {
+                                string powerString = part.Properties.ARTICLE_CHARACTERISTICS.GetDisplayString().GetString(ISOCode.Language.L___);
+                                powerString = ExtractPowerValue(powerString);
+                                MessageBox.Show($"{part.PartNr}, {powerString}");
+                                find = true;
+                            }
+                        }
+                    }
+                    if (!find) { MessageBox.Show("Не найдено защитное устройство, соответствующие заданным критериям.", "Предупреждение"); }
+                }
+                else
+                {
+                    MessageBox.Show("Не найдены защитные устройства, соответствующие заданным критериям.", "Предупреждение");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка при загрузке данных: " + ex.Message + "\r\n" + ex.StackTrace, "Ошибка");
+            }
+            finally
+            {
+                if (partsDatabase != null)
+                {
+                    try
+                    {
+                        partsDatabase.Close();
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Ошибка при закрытии базы данных: {ex.Message}", "Ошибка");
+                    }
+                    finally
+                    {
+                        partsDatabase.Dispose();
+                    }
+                }
+            }
+        }
+
+        private string ExtractPowerValue(string powerString)
+        {
+            // Достаем из строки мощность
+            string result = "";
+            // Используем регулярное выражение
+            System.Text.RegularExpressions.Match match = Regex.Match(powerString, @"([\d,\.]+)\s*(кВт|kW|Квт|квт)", RegexOptions.IgnoreCase);
+
+            if (match.Success)
+            {
+                result = match.Groups[1].Value.Trim();
+                result = result.Replace(",", ".");
+
+                // Дополнительная проверка, что это число
+                if (!float.TryParse(result, NumberStyles.Any, CultureInfo.InvariantCulture, out _))
+                {
+                    result = ""; // Возвращаем пустую строку, если не удалось преобразовать в число
+                }
+            }
+            return result;
+        }
         private void ParameterChanged(object sender, EventArgs e)
         {
             // Обновление ComboBox6
@@ -623,9 +916,13 @@ namespace ClassLibrary_PESK2
             {
                 filteredDevices = filteredDevices.Where(d => d.Power == power);
             }
-            if (!string.IsNullOrEmpty(current))
+            if (!string.IsNullOrEmpty(current) && flagNormal)
             {
-                filteredDevices = filteredDevices.Where(d => d.Current == current);
+                filteredDevices = filteredDevices.Where(d => d.NormalCurrent == current);
+            }
+            if (!string.IsNullOrEmpty(current) && !flagNormal)
+            {
+                filteredDevices = filteredDevices.Where(d => d.OverloadCurrent == current);
             }
 
             // Добавляем
@@ -644,276 +941,277 @@ namespace ClassLibrary_PESK2
             // Класс для представления ПЧ
             public string Number { get; set; }
             public string Voltage { get; set; }
-            public string Current { get; set; }
+            //public string Current { get; set; }
+            public string OverloadCurrent { get; set; }
+            public string NormalCurrent { get; set; }
             public string Power { get; set; }
             public string Discribe { get; set; }
         }
 
+        // Excel
+        //private void CreateBook()
+        //{
+        //    /////////// Книга 1 ///////////
+        //    int numRows = 13;
+        //    int numCells = 2;
 
-        private void CreateBook()
-        {
-            /////////// Книга 1 ///////////
-            int numRows = 13;
-            int numCells = 2;
+        //    IWorkbook workbook = new XSSFWorkbook();    // Создаем книгу Excel (.xlsx)
+        //    ISheet sheet = workbook.CreateSheet("Лист1");   // Создаем лист, строки и ячейки
 
-            IWorkbook workbook = new XSSFWorkbook();    // Создаем книгу Excel (.xlsx)
-            ISheet sheet = workbook.CreateSheet("Лист1");   // Создаем лист, строки и ячейки
+        //    // Стили
+        //    ICellStyle centerAlignedStyle = CreateCenterAlignedBoldStyle(workbook);
+        //    ICellStyle cellOutline = CreateCellOutlineStyle(workbook);
+        //    ICellStyle styledCell = CreateStyledCell(workbook);
 
-            // Стили
-            ICellStyle centerAlignedStyle = CreateCenterAlignedBoldStyle(workbook);
-            ICellStyle cellOutline = CreateCellOutlineStyle(workbook);
-            ICellStyle styledCell = CreateStyledCell(workbook);
+        //    for (int rowNum = 0; rowNum < numRows; rowNum++)
+        //    {
+        //        IRow row = sheet.CreateRow(rowNum);
+        //        for (int cellNum = 0; cellNum < numCells; cellNum++)
+        //        {
+        //            NPOI.SS.UserModel.ICell cell = row.CreateCell(cellNum);
+        //            if (rowNum > 5)
+        //            {
+        //                cell.CellStyle = cellOutline;
+        //            }
+        //        }
+        //    }
 
-            for (int rowNum = 0; rowNum < numRows; rowNum++)
-            {
-                IRow row = sheet.CreateRow(rowNum);
-                for (int cellNum = 0; cellNum < numCells; cellNum++)
-                {
-                    NPOI.SS.UserModel.ICell cell = row.CreateCell(cellNum);
-                    if (rowNum > 5)
-                    {
-                        cell.CellStyle = cellOutline;
-                    }
-                }
-            }
+        //    string dateString = "Дата: " + DateTime.Now.ToString("dd.MM.yyyy");
+        //    sheet.GetRow(3).GetCell(0).SetCellValue(dateString);
 
-            string dateString = "Дата: " + DateTime.Now.ToString("dd.MM.yyyy");
-            sheet.GetRow(3).GetCell(0).SetCellValue(dateString);
+        //    sheet.GetRow(5).GetCell(0).SetCellValue("Наименование");
+        //    sheet.GetRow(5).GetCell(0).CellStyle = styledCell;
+        //    sheet.GetRow(5).GetCell(1).SetCellValue("Значение");
+        //    sheet.GetRow(5).GetCell(1).CellStyle = styledCell;
 
-            sheet.GetRow(5).GetCell(0).SetCellValue("Наименование");
-            sheet.GetRow(5).GetCell(0).CellStyle = styledCell;
-            sheet.GetRow(5).GetCell(1).SetCellValue("Значение");
-            sheet.GetRow(5).GetCell(1).CellStyle = styledCell;
+        //    sheet.GetRow(6).GetCell(0).SetCellValue(label1.Text); // Устанавливаем значение ячейки
+        //    sheet.GetRow(6).GetCell(1).SetCellValue(Convert.ToString(comboBox1.SelectedItem));
 
-            sheet.GetRow(6).GetCell(0).SetCellValue(label1.Text); // Устанавливаем значение ячейки
-            sheet.GetRow(6).GetCell(1).SetCellValue(Convert.ToString(comboBox1.SelectedItem));
+        //    sheet.GetRow(7).GetCell(0).SetCellValue(label2.Text);
+        //    sheet.GetRow(7).GetCell(1).SetCellValue(Convert.ToString(comboBox2.SelectedItem));
 
-            sheet.GetRow(7).GetCell(0).SetCellValue(label2.Text);
-            sheet.GetRow(7).GetCell(1).SetCellValue(Convert.ToString(comboBox2.SelectedItem));
+        //    sheet.GetRow(8).GetCell(0).SetCellValue(label3.Text);
+        //    sheet.GetRow(8).GetCell(1).SetCellValue(Convert.ToString(comboBox3.SelectedItem));
 
-            sheet.GetRow(8).GetCell(0).SetCellValue(label3.Text);
-            sheet.GetRow(8).GetCell(1).SetCellValue(Convert.ToString(comboBox3.SelectedItem));
+        //    sheet.GetRow(9).GetCell(0).SetCellValue(label4.Text);
+        //    sheet.GetRow(9).GetCell(1).SetCellValue(Convert.ToString(comboBox4.SelectedItem));
 
-            sheet.GetRow(9).GetCell(0).SetCellValue(label4.Text);
-            sheet.GetRow(9).GetCell(1).SetCellValue(Convert.ToString(comboBox4.SelectedItem));
+        //    sheet.GetRow(10).GetCell(0).SetCellValue(label7.Text);
+        //    sheet.GetRow(10).GetCell(1).SetCellValue(Convert.ToString(comboBox5.SelectedItem));
 
-            sheet.GetRow(10).GetCell(0).SetCellValue(label7.Text);
-            sheet.GetRow(10).GetCell(1).SetCellValue(Convert.ToString(comboBox5.SelectedItem));
+        //    sheet.GetRow(11).GetCell(0).SetCellValue(label8.Text);
+        //    sheet.GetRow(11).GetCell(1).SetCellValue(foundDevice.Power + " кВт");
 
-            sheet.GetRow(11).GetCell(0).SetCellValue(label8.Text);
-            sheet.GetRow(11).GetCell(1).SetCellValue(foundDevice.Power + " кВт");
+        //    sheet.GetRow(12).GetCell(0).SetCellValue(label9.Text);
+        //    sheet.GetRow(12).GetCell(1).SetCellValue(foundDevice.Current + " А");
 
-            sheet.GetRow(12).GetCell(0).SetCellValue(label9.Text);
-            sheet.GetRow(12).GetCell(1).SetCellValue(foundDevice.Current + " А");
+        //    sheet.AddMergedRegion(new CellRangeAddress(1, 1, 0, 1)); // объединение
+        //    sheet.GetRow(1).GetCell(0).SetCellValue("Характеристики");
+        //    sheet.GetRow(1).GetCell(0).CellStyle = centerAlignedStyle;
 
-            sheet.AddMergedRegion(new CellRangeAddress(1, 1, 0, 1)); // объединение
-            sheet.GetRow(1).GetCell(0).SetCellValue("Характеристики");
-            sheet.GetRow(1).GetCell(0).CellStyle = centerAlignedStyle;
+        //    sheet.SetColumnWidth(0, 29 * 256);
+        //    sheet.SetColumnWidth(1, 20 * 256);
 
-            sheet.SetColumnWidth(0, 29 * 256);
-            sheet.SetColumnWidth(1, 20 * 256);
+        //    // Получаем путь к папке "Документы" на рабочем столе
+        //    string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        //    string folderName = "Документы";
+        //    string fullFolderPath = Path.Combine(desktopPath, folderName);
 
-            // Получаем путь к папке "Документы" на рабочем столе
-            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-            string folderName = "Документы";
-            string fullFolderPath = Path.Combine(desktopPath, folderName);
+        //    // Проверяем, существует ли папка. Если нет - создаем
+        //    if (!Directory.Exists(fullFolderPath))
+        //    {
+        //        Directory.CreateDirectory(fullFolderPath);
+        //    }
 
-            // Проверяем, существует ли папка. Если нет - создаем
-            if (!Directory.Exists(fullFolderPath))
-            {
-                Directory.CreateDirectory(fullFolderPath);
-            }
+        //    // Указываем полный путь к файлу
+        //    string fileName = "myworkbook.xlsx";
+        //    string filePath = Path.Combine(fullFolderPath, fileName);
 
-            // Указываем полный путь к файлу
-            string fileName = "myworkbook.xlsx";
-            string filePath = Path.Combine(fullFolderPath, fileName);
+        //    // Создаем файловый поток для записи данных в файл
+        //    using (FileStream fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
+        //    {
+        //        // Записываем книгу в файловый поток
+        //        workbook.Write(fileStream);
+        //    }
+        //}
 
-            // Создаем файловый поток для записи данных в файл
-            using (FileStream fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
-            {
-                // Записываем книгу в файловый поток
-                workbook.Write(fileStream);
-            }
-        }
+        //private void CreateBook_2(string price, string article, string discribe)
+        //{
+        //    /////////// Книга 2 ///////////
+        //    int numRows = 16;
+        //    int numCells = 7;
+        //    IWorkbook workbook_2 = new XSSFWorkbook();    // Создаем книгу Excel (.xlsx)
+        //    ISheet sheet_2 = workbook_2.CreateSheet("Лист1");   // Создаем лист, строки и ячейки
 
-        private void CreateBook_2(string price, string article, string discribe)
-        {
-            /////////// Книга 2 ///////////
-            int numRows = 16;
-            int numCells = 7;
-            IWorkbook workbook_2 = new XSSFWorkbook();    // Создаем книгу Excel (.xlsx)
-            ISheet sheet_2 = workbook_2.CreateSheet("Лист1");   // Создаем лист, строки и ячейки
-
-            // Стили
-            ICellStyle centerAlignedStyle = CreateCenterAlignedBoldStyle(workbook_2);
-            ICellStyle cellOutline = CreateCellOutlineStyle(workbook_2);
-            ICellStyle styledCell = CreateStyledCell(workbook_2);
-
-
-            for (int rowNum = 0; rowNum < numRows; rowNum++)
-            {
-                IRow row = sheet_2.CreateRow(rowNum);
-                if (rowNum == 1)
-                {
-                    row.HeightInPoints = 21;
-                }
-                for (int cellNum = 0; cellNum < numCells; cellNum++)
-                {
-                    NPOI.SS.UserModel.ICell cell = row.CreateCell(cellNum, CellType.String);
-
-                    if (rowNum == 12) { cell.CellStyle = styledCell; }
-                    else if (rowNum == 13) { cell.CellStyle = cellOutline; }
-                }
-            }
-
-            try
-            {
-                sheet_2.AddMergedRegion(new CellRangeAddress(1, 1, 1, 5));   // объединение
-                                                                             //sheet_2.AddMergedRegion(new CellRangeAddress(2, 3, 2, 2));
-                                                                             //sheet_2.AddMergedRegion(new NPOI.SS.Util.CellRangeAddress(4, 5, 2, 2));
+        //    // Стили
+        //    ICellStyle centerAlignedStyle = CreateCenterAlignedBoldStyle(workbook_2);
+        //    ICellStyle cellOutline = CreateCellOutlineStyle(workbook_2);
+        //    ICellStyle styledCell = CreateStyledCell(workbook_2);
 
 
-                sheet_2.GetRow(1).GetCell(1).SetCellValue("Коммерческое предложение");
-                sheet_2.GetRow(1).GetCell(1).CellStyle = centerAlignedStyle;
+        //    for (int rowNum = 0; rowNum < numRows; rowNum++)
+        //    {
+        //        IRow row = sheet_2.CreateRow(rowNum);
+        //        if (rowNum == 1)
+        //        {
+        //            row.HeightInPoints = 21;
+        //        }
+        //        for (int cellNum = 0; cellNum < numCells; cellNum++)
+        //        {
+        //            NPOI.SS.UserModel.ICell cell = row.CreateCell(cellNum, CellType.String);
 
-                sheet_2.GetRow(3).GetCell(1).SetCellValue("От:");
-                sheet_2.GetRow(4).GetCell(1).SetCellValue("Кому:");
-                sheet_2.GetRow(3).GetCell(1).CellStyle = cellOutline;
-                sheet_2.GetRow(4).GetCell(1).CellStyle = cellOutline;
-                sheet_2.GetRow(3).GetCell(2).CellStyle = cellOutline;
-                sheet_2.GetRow(4).GetCell(2).CellStyle = cellOutline;
+        //            if (rowNum == 12) { cell.CellStyle = styledCell; }
+        //            else if (rowNum == 13) { cell.CellStyle = cellOutline; }
+        //        }
+        //    }
 
-                string dateString = "Дата: " + DateTime.Now.ToString("dd.MM.yyyy");
-                sheet_2.GetRow(8).GetCell(1).SetCellValue(dateString);
-                //sheet_2.AddMergedRegion(new CellRangeAddress(9, 9, 0, 2));
-                //sheet_2.GetRow(9).GetCell(1).SetCellValue("Счетом");
-
-                sheet_2.GetRow(12).GetCell(0).SetCellValue("№ п/п");
-                sheet_2.GetRow(13).GetCell(0).SetCellValue("1");
-                sheet_2.GetRow(12).GetCell(1).SetCellValue("Артикул");
-                sheet_2.GetRow(13).GetCell(1).SetCellValue(article);
-                sheet_2.GetRow(12).GetCell(2).SetCellValue("Наименование");
-                sheet_2.GetRow(13).GetCell(2).SetCellValue(discribe);
-                sheet_2.GetRow(12).GetCell(3).SetCellValue("Кол-во шт/упак.");
-                sheet_2.GetRow(13).GetCell(3).SetCellValue("1");
-                sheet_2.GetRow(12).GetCell(4).SetCellValue("Цена в руб.");
-                sheet_2.GetRow(12).GetCell(5).SetCellValue("Цена со скидкой в руб.");
-                sheet_2.GetRow(12).GetCell(6).SetCellValue("Наличие");
-
-                if (price != "Нет на складе")
-                {
-                    string price_num = price.Trim();
-                    //string price_num = price.Replace(",", ".").Trim();
-                    price_num = Regex.Replace(price_num, "[^0-9.,]", "");
-                    sheet_2.GetRow(13).GetCell(4).SetCellValue(price_num);
-                    float discountPrice = float.Parse(price_num);
-                    sheet_2.GetRow(13).GetCell(5).SetCellValue(price_num);
-                    if (!string.IsNullOrEmpty(textBox3.Text))
-                    {
-                        float discount = (float)Convert.ToDouble(textBox3.Text);
-                        discountPrice = discountPrice * (100 - discount) / 100;
-                        string formattedFloat = string.Format("{0:F2}", discountPrice);
-                        sheet_2.GetRow(13).GetCell(5).SetCellValue(formattedFloat);
-                    }
-                }
-                else
-                {
-                    sheet_2.GetRow(13).GetCell(4).SetCellValue("--");
-                    sheet_2.GetRow(13).GetCell(5).SetCellValue("--");
-                }
-
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Произошла ошибка: {ex.Message}", "Ошибка");
-                MessageBox.Show(ex.StackTrace); // Выводим трассировку стека для более детальной информации
-            }
-
-            sheet_2.SetColumnWidth(0, 4 * 256);
-            sheet_2.SetColumnWidth(1, 30 * 256);
-            sheet_2.SetColumnWidth(2, 50 * 256);
-            sheet_2.SetColumnWidth(3, 11 * 256);
-            sheet_2.SetColumnWidth(4, 11 * 256);
-            sheet_2.SetColumnWidth(5, 11 * 256);
-            sheet_2.SetColumnWidth(6, 11 * 256);
-
-            // Получаем путь к папке "Документы" на рабочем столе
-            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-            string folderName = "Документы";
-            string fullFolderPath = Path.Combine(desktopPath, folderName);
-
-            // Проверяем, существует ли папка. Если нет - создаем
-            if (!Directory.Exists(fullFolderPath))
-            {
-                Directory.CreateDirectory(fullFolderPath);
-            }
-
-            // Указываем полный путь к файлу
-            string fileName = "myworkbook_2.xlsx";
-            string filePath = Path.Combine(fullFolderPath, fileName);
-
-            // Создаем файловый поток для записи данных в файл
-            using (FileStream fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
-            {
-                // Записываем книгу в файловый поток
-                workbook_2.Write(fileStream);
-            }
-        }
+        //    try
+        //    {
+        //        sheet_2.AddMergedRegion(new CellRangeAddress(1, 1, 1, 5));   // объединение
+        //                                                                     //sheet_2.AddMergedRegion(new CellRangeAddress(2, 3, 2, 2));
+        //                                                                     //sheet_2.AddMergedRegion(new NPOI.SS.Util.CellRangeAddress(4, 5, 2, 2));
 
 
-        private ICellStyle CreateCenterAlignedBoldStyle(IWorkbook workbook)
-        {
-            // Стиль для жирного шрифта и размера + выравнивания по центру
-            IFont boldFont = workbook.CreateFont();
-            boldFont.IsBold = true;
-            boldFont.FontHeightInPoints = 16; // Устанавливаем размер шрифта (в пунктах)
-            ICellStyle boldStyle = workbook.CreateCellStyle();
-            boldStyle.SetFont(boldFont);
-            ICellStyle centerAlignedStyle = workbook.CreateCellStyle();
-            centerAlignedStyle.Alignment = NPOI.SS.UserModel.HorizontalAlignment.Center;
-            centerAlignedStyle.VerticalAlignment = VerticalAlignment.Center;
-            centerAlignedStyle.SetFont(boldFont);
-            centerAlignedStyle.WrapText = true;
-            return centerAlignedStyle;
-        }
+        //        sheet_2.GetRow(1).GetCell(1).SetCellValue("Коммерческое предложение");
+        //        sheet_2.GetRow(1).GetCell(1).CellStyle = centerAlignedStyle;
 
-        private ICellStyle CreateCellOutlineStyle(IWorkbook workbook)
-        {
-            // Стиль для обводки + по центру по вертикали
-            ICellStyle cellOutline = workbook.CreateCellStyle();
-            cellOutline.BorderTop = NPOI.SS.UserModel.BorderStyle.Thin;
-            cellOutline.BorderBottom = NPOI.SS.UserModel.BorderStyle.Thin;
-            cellOutline.BorderLeft = NPOI.SS.UserModel.BorderStyle.Thin;
-            cellOutline.BorderRight = NPOI.SS.UserModel.BorderStyle.Thin;
-            cellOutline.TopBorderColor = IndexedColors.Black.Index;
-            cellOutline.BottomBorderColor = IndexedColors.Black.Index;
-            cellOutline.LeftBorderColor = IndexedColors.Black.Index;
-            cellOutline.RightBorderColor = IndexedColors.Black.Index;
-            cellOutline.VerticalAlignment = VerticalAlignment.Center;
-            cellOutline.WrapText = true;
-            return cellOutline;
-        }
+        //        sheet_2.GetRow(3).GetCell(1).SetCellValue("От:");
+        //        sheet_2.GetRow(4).GetCell(1).SetCellValue("Кому:");
+        //        sheet_2.GetRow(3).GetCell(1).CellStyle = cellOutline;
+        //        sheet_2.GetRow(4).GetCell(1).CellStyle = cellOutline;
+        //        sheet_2.GetRow(3).GetCell(2).CellStyle = cellOutline;
+        //        sheet_2.GetRow(4).GetCell(2).CellStyle = cellOutline;
 
-        private ICellStyle CreateStyledCell(IWorkbook workbook)
-        {
-            // Стиль для выравнивания по центру + серая заливка + обводка
-            ICellStyle styledCell = workbook.CreateCellStyle();
-            styledCell.FillPattern = FillPattern.SolidForeground;
-            styledCell.FillForegroundColor = IndexedColors.Grey25Percent.Index;
-            styledCell.Alignment = NPOI.SS.UserModel.HorizontalAlignment.Center;
-            styledCell.VerticalAlignment = VerticalAlignment.Center;
-            styledCell.BorderTop = NPOI.SS.UserModel.BorderStyle.Thin;
-            styledCell.BorderBottom = NPOI.SS.UserModel.BorderStyle.Thin;
-            styledCell.BorderLeft = NPOI.SS.UserModel.BorderStyle.Thin;
-            styledCell.BorderRight = NPOI.SS.UserModel.BorderStyle.Thin;
-            styledCell.TopBorderColor = IndexedColors.Black.Index;
-            styledCell.BottomBorderColor = IndexedColors.Black.Index;
-            styledCell.LeftBorderColor = IndexedColors.Black.Index;
-            styledCell.RightBorderColor = IndexedColors.Black.Index;
-            styledCell.WrapText = true;
-            return styledCell;
-        }
+        //        string dateString = "Дата: " + DateTime.Now.ToString("dd.MM.yyyy");
+        //        sheet_2.GetRow(8).GetCell(1).SetCellValue(dateString);
+        //        //sheet_2.AddMergedRegion(new CellRangeAddress(9, 9, 0, 2));
+        //        //sheet_2.GetRow(9).GetCell(1).SetCellValue("Счетом");
 
+        //        sheet_2.GetRow(12).GetCell(0).SetCellValue("№ п/п");
+        //        sheet_2.GetRow(13).GetCell(0).SetCellValue("1");
+        //        sheet_2.GetRow(12).GetCell(1).SetCellValue("Артикул");
+        //        sheet_2.GetRow(13).GetCell(1).SetCellValue(article);
+        //        sheet_2.GetRow(12).GetCell(2).SetCellValue("Наименование");
+        //        sheet_2.GetRow(13).GetCell(2).SetCellValue(discribe);
+        //        sheet_2.GetRow(12).GetCell(3).SetCellValue("Кол-во шт/упак.");
+        //        sheet_2.GetRow(13).GetCell(3).SetCellValue("1");
+        //        sheet_2.GetRow(12).GetCell(4).SetCellValue("Цена в руб.");
+        //        sheet_2.GetRow(12).GetCell(5).SetCellValue("Цена со скидкой в руб.");
+        //        sheet_2.GetRow(12).GetCell(6).SetCellValue("Наличие");
+
+        //        if (price != "Нет на складе")
+        //        {
+        //            string price_num = price.Trim();
+        //            //string price_num = price.Replace(",", ".").Trim();
+        //            price_num = Regex.Replace(price_num, "[^0-9.,]", "");
+        //            sheet_2.GetRow(13).GetCell(4).SetCellValue(price_num);
+        //            float discountPrice = float.Parse(price_num);
+        //            sheet_2.GetRow(13).GetCell(5).SetCellValue(price_num);
+        //            if (!string.IsNullOrEmpty(textBox3.Text))
+        //            {
+        //                float discount = (float)Convert.ToDouble(textBox3.Text);
+        //                discountPrice = discountPrice * (100 - discount) / 100;
+        //                string formattedFloat = string.Format("{0:F2}", discountPrice);
+        //                sheet_2.GetRow(13).GetCell(5).SetCellValue(formattedFloat);
+        //            }
+        //        }
+        //        else
+        //        {
+        //            sheet_2.GetRow(13).GetCell(4).SetCellValue("--");
+        //            sheet_2.GetRow(13).GetCell(5).SetCellValue("--");
+        //        }
+
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        MessageBox.Show($"Произошла ошибка: {ex.Message}", "Ошибка");
+        //        MessageBox.Show(ex.StackTrace); // Выводим трассировку стека для более детальной информации
+        //    }
+
+        //    sheet_2.SetColumnWidth(0, 4 * 256);
+        //    sheet_2.SetColumnWidth(1, 30 * 256);
+        //    sheet_2.SetColumnWidth(2, 50 * 256);
+        //    sheet_2.SetColumnWidth(3, 11 * 256);
+        //    sheet_2.SetColumnWidth(4, 11 * 256);
+        //    sheet_2.SetColumnWidth(5, 11 * 256);
+        //    sheet_2.SetColumnWidth(6, 11 * 256);
+
+        //    // Получаем путь к папке "Документы" на рабочем столе
+        //    string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        //    string folderName = "Документы";
+        //    string fullFolderPath = Path.Combine(desktopPath, folderName);
+
+        //    // Проверяем, существует ли папка. Если нет - создаем
+        //    if (!Directory.Exists(fullFolderPath))
+        //    {
+        //        Directory.CreateDirectory(fullFolderPath);
+        //    }
+
+        //    // Указываем полный путь к файлу
+        //    string fileName = "myworkbook_2.xlsx";
+        //    string filePath = Path.Combine(fullFolderPath, fileName);
+
+        //    // Создаем файловый поток для записи данных в файл
+        //    using (FileStream fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
+        //    {
+        //        // Записываем книгу в файловый поток
+        //        workbook_2.Write(fileStream);
+        //    }
+        //}
+
+
+        //private ICellStyle CreateCenterAlignedBoldStyle(IWorkbook workbook)
+        //{
+        //    // Стиль для жирного шрифта и размера + выравнивания по центру
+        //    IFont boldFont = workbook.CreateFont();
+        //    boldFont.IsBold = true;
+        //    boldFont.FontHeightInPoints = 16; // Устанавливаем размер шрифта (в пунктах)
+        //    ICellStyle boldStyle = workbook.CreateCellStyle();
+        //    boldStyle.SetFont(boldFont);
+        //    ICellStyle centerAlignedStyle = workbook.CreateCellStyle();
+        //    centerAlignedStyle.Alignment = NPOI.SS.UserModel.HorizontalAlignment.Center;
+        //    centerAlignedStyle.VerticalAlignment = VerticalAlignment.Center;
+        //    centerAlignedStyle.SetFont(boldFont);
+        //    centerAlignedStyle.WrapText = true;
+        //    return centerAlignedStyle;
+        //}
+
+        //private ICellStyle CreateCellOutlineStyle(IWorkbook workbook)
+        //{
+        //    // Стиль для обводки + по центру по вертикали
+        //    ICellStyle cellOutline = workbook.CreateCellStyle();
+        //    cellOutline.BorderTop = NPOI.SS.UserModel.BorderStyle.Thin;
+        //    cellOutline.BorderBottom = NPOI.SS.UserModel.BorderStyle.Thin;
+        //    cellOutline.BorderLeft = NPOI.SS.UserModel.BorderStyle.Thin;
+        //    cellOutline.BorderRight = NPOI.SS.UserModel.BorderStyle.Thin;
+        //    cellOutline.TopBorderColor = IndexedColors.Black.Index;
+        //    cellOutline.BottomBorderColor = IndexedColors.Black.Index;
+        //    cellOutline.LeftBorderColor = IndexedColors.Black.Index;
+        //    cellOutline.RightBorderColor = IndexedColors.Black.Index;
+        //    cellOutline.VerticalAlignment = VerticalAlignment.Center;
+        //    cellOutline.WrapText = true;
+        //    return cellOutline;
+        //}
+
+        //private ICellStyle CreateStyledCell(IWorkbook workbook)
+        //{
+        //    // Стиль для выравнивания по центру + серая заливка + обводка
+        //    ICellStyle styledCell = workbook.CreateCellStyle();
+        //    styledCell.FillPattern = FillPattern.SolidForeground;
+        //    styledCell.FillForegroundColor = IndexedColors.Grey25Percent.Index;
+        //    styledCell.Alignment = NPOI.SS.UserModel.HorizontalAlignment.Center;
+        //    styledCell.VerticalAlignment = VerticalAlignment.Center;
+        //    styledCell.BorderTop = NPOI.SS.UserModel.BorderStyle.Thin;
+        //    styledCell.BorderBottom = NPOI.SS.UserModel.BorderStyle.Thin;
+        //    styledCell.BorderLeft = NPOI.SS.UserModel.BorderStyle.Thin;
+        //    styledCell.BorderRight = NPOI.SS.UserModel.BorderStyle.Thin;
+        //    styledCell.TopBorderColor = IndexedColors.Black.Index;
+        //    styledCell.BottomBorderColor = IndexedColors.Black.Index;
+        //    styledCell.LeftBorderColor = IndexedColors.Black.Index;
+        //    styledCell.RightBorderColor = IndexedColors.Black.Index;
+        //    styledCell.WrapText = true;
+        //    return styledCell;
+        //}
 
         private async Task<string> GetPriceFromDrivesRu(string searchQuery)
         {
@@ -980,5 +1278,11 @@ namespace ClassLibrary_PESK2
             }
         }
 
+        private void comboBox3_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            string load = comboBox3.SelectedItem.ToString();
+            if (load == "Общепром. нагрузка") { flagNormal = false; }
+            else {  flagNormal = true; }
+        }
     }
 }
