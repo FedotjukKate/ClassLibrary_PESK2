@@ -560,9 +560,9 @@
             this.label23.AutoSize = true;
             this.label23.Location = new System.Drawing.Point(28, 201);
             this.label23.Name = "label23";
-            this.label23.Size = new System.Drawing.Size(58, 16);
+            this.label23.Size = new System.Drawing.Size(114, 16);
             this.label23.TabIndex = 15;
-            this.label23.Text = "Шаблон";
+            this.label23.Text = "Базовый проект";
             // 
             // label22
             // 

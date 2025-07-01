@@ -27,6 +27,9 @@ using Eplan.EplApi.ApplicationFramework;
 using Eplan.EplApi.DataModel;
 using static Eplan.EplApi.EServices.IMessage;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
+using static Eplan.EplApi.Base.ISOCode;
+using Eplan.EplApi.HEServices;
+
 
 
 namespace ClassLibrary_PESK2
@@ -100,7 +103,7 @@ namespace ClassLibrary_PESK2
                         ProjectManager projectManager = new ProjectManager();
                         Project oProject = projectManager.CreateProject(projectPath, templatesPath);
 
-                        Create_Pages(oProject);
+                        //Create_Pages(oProject);
 
                         if (oProject != null)
                         {
@@ -185,7 +188,7 @@ namespace ClassLibrary_PESK2
 
 
 
-        //// Бесполезные кнопки ////
+        //// Бесполезные вещи ////
         /////private void button2_Click(object sender, EventArgs e)
         //{
         //    string projectName = "NewEplanProject";
@@ -339,55 +342,65 @@ namespace ClassLibrary_PESK2
             }
         }
 
-
-        //// Доп функции ////
         private void Create_Pages(Project oProject)
         {
-            MessageBox.Show("fffffffffffff");
             //Установка иерархии:
             PagePropertyList name_parts = new PagePropertyList();
+            name_parts.DESIGNATION_USERDEFINED.Set("КД");
+            //name_parts.DESIGNATION_INSTALLATIONNUMBER.Set("DESIGNATION_INSTALLATIONNUMBER");
+            //name_parts.DESIGNATION_FUNCTIONALASSIGNMENT.Set("DESIGNATION_FUNCTIONALASSIGNMENT");
+            //name_parts.DESIGNATION_PLANT.Set("DESIGNATION_PLANT");
+            //name_parts.DESIGNATION_PLACEOFINSTALLATION.Set("DESIGNATION_PLACEOFINSTALLATION");
+            name_parts.DESIGNATION_LOCATION.Set("ШУ-ПЧ");
+            name_parts.DESIGNATION_DOCTYPE.Set("ТЛ");
 
-            name_parts.DESIGNATION_USERDEFINED.Set("DESIGNATION_USERDEFINED");
-            name_parts.DESIGNATION_INSTALLATIONNUMBER.Set("DESIGNATION_INSTALLATIONNUMBER");
-            name_parts.DESIGNATION_FUNCTIONALASSIGNMENT.Set("DESIGNATION_FUNCTIONALASSIGNMENT");
-            name_parts.DESIGNATION_PLANT.Set("DESIGNATION_PLANT");
-            name_parts.DESIGNATION_PLACEOFINSTALLATION.Set("DESIGNATION_PLACEOFINSTALLATION");
-            name_parts.DESIGNATION_LOCATION.Set("DESIGNATION_LOCATION");
-            name_parts.DESIGNATION_DOCTYPE.Set("Э3");
-
+            // Создание страницы
             try { name_parts.PAGE_COUNTER.Set(1); }
             catch (Exception ex) { MessageBox.Show($"Ошибка при создании иерархии: {ex.Message}", "Ошибка!"); }
-
-
-            MessageBox.Show(
-             $"DESIGNATION_USERDEFINED: {name_parts.DESIGNATION_USERDEFINED.ToString()}\n" +
-             $"DESIGNATION_INSTALLATIONNUMBER: {name_parts.DESIGNATION_INSTALLATIONNUMBER.ToString()}\n" +
-             $"DESIGNATION_FUNCTIONALASSIGNMENT: {name_parts.DESIGNATION_FUNCTIONALASSIGNMENT.ToString()}\n" +
-             $"DESIGNATION_PLANT: {name_parts.DESIGNATION_PLANT.ToString()}\n" +
-             $"DESIGNATION_PLACEOFINSTALLATION: {name_parts.DESIGNATION_PLACEOFINSTALLATION.ToString()}\n" +
-             $"DESIGNATION_LOCATION: {name_parts.DESIGNATION_LOCATION.ToString()}\n" +
-             $"DESIGNATION_DOCTYPE: {name_parts.DESIGNATION_DOCTYPE.ToString()}\n" +
-             $"PAGE_COUNTER: {name_parts.PAGE_COUNTER.ToString()}",
-             "Значения name_parts");
-
-
-
-            MessageBox.Show("tttttttttttttttttt");
-            // Создание страницы
-            Page NewPage = new Page();
-            NewPage.Create(oProject, DocumentTypeManager.DocumentType.Circuit, name_parts); //DocumentTypeManager.DocumentType.Circuit - это многопол. схема соединения, хз какая тебе нужна
-
-            MessageBox.Show("pppppppppppp");
-            NewPage.Properties.PAGE_FORMPLOT.Set("ЕСКД_A3_Форма_2а_Описание_страницы_v4.0"); //это "Имя рамки"
-            try { NewPage.Properties[11011] = "Раскладка ПЛК 1"; } //описание страницы - самое видимое имя
+            Page Page_TL = new Page();
+            Page_TL.Create(oProject, DocumentTypeManager.DocumentType.TitlePage, name_parts);
+            Page_TL.Properties.PAGE_FORMPLOT.Set("ЕСКД_A4_Титульный_лист_v3.0"); 
+            try { Page_TL.Properties[11011] = "Титульный лист"; }
             catch { }
+
+            //name_parts.DESIGNATION_DOCTYPE.Set("СП");
+            //try { name_parts.PAGE_COUNTER.Set(1); }
+            //catch (Exception ex) { MessageBox.Show($"Ошибка при создании иерархии: {ex.Message}", "Ошибка!"); }
+            //Page Page_SP_1 = new Page();
+            //Page_SP_1.Create(oProject, DocumentTypeManager.DocumentType.Circuit, name_parts);
+            //Page_SP_1.Properties.PAGE_FORMULAR.Set("F28_002_en_US");
+            //Page_SP_1.Properties.PAGE_FORMPLOT.Set("GOST_A4_first_page_text");
+            //try { Page_SP_1.Properties[11011] = "Ведомость документов"; }
+            //catch { }
+
+            //try { name_parts.PAGE_COUNTER.Set(2); }
+            //catch (Exception ex) { MessageBox.Show($"Ошибка при создании иерархии: {ex.Message}", "Ошибка!"); }
+            //Page Page_SP_2 = new Page();
+            //Page_SP_2.Create(oProject, DocumentTypeManager.DocumentType.Circuit, name_parts);
+            //Page_SP_2.Properties.PAGE_FORMULAR.Set("F28_002_en_US");
+            //Page_SP_2.Properties.PAGE_FORMPLOT.Set("GOST_A4_first_page_text");
+            //try { Page_SP_2.Properties[11011] = "Спецификация"; }
+            //catch { }
+
+            name_parts.DESIGNATION_DOCTYPE.Set("ЭЗ");
+            try { name_parts.PAGE_COUNTER.Set(1); }
+            catch (Exception ex) { MessageBox.Show($"Ошибка при создании иерархии: {ex.Message}", "Ошибка!"); }
+            Page Page_SP_1 = new Page();
+            Page_SP_1.Create(oProject, DocumentTypeManager.DocumentType.Circuit, name_parts);
+            //Page_SP_1.Properties.PAGE_FORMPLOT = "ЕСКД_A3_Форма_1_v3.0";
+            Page_SP_1.Properties.PAGE_FORMPLOT.Set("ЕСКД_A3_Форма_1_v3.0");
+            
+            //Page_SP_1.Properties.set_PAGE_FORMPLOT(1, "ЕСКД_A3_Форма_1_v3.0");
+            try { Page_SP_1.Properties[11011] = "Ввод 660VAC"; }
+            catch { }
+
 
             MessageBox.Show("iiiiiiiiiiiiiii");
             //NewPage.NameParts
             //считывать все эти свойства: NewPage.NameParts.DESIGNATION_INSTALLATIONNUMBER.ToString();
         }
 
-
+        //// Доп функции ////
         private void LoadDataFromDatabase()
         {
             MDPartsDatabase partsDatabase = null;
