@@ -31,6 +31,8 @@ using static Eplan.EplApi.Base.ISOCode;
 using Eplan.EplApi.HEServices;
 using System.Security.Cryptography;
 using static Eplan.EplApi.DataModel.Properties;
+using ExcelDataReader;
+
 
 
 namespace ClassLibrary_PESK2
@@ -52,6 +54,8 @@ namespace ClassLibrary_PESK2
             comboBox7.SelectedIndex = 0;
             comboBox8.SelectedIndex = 0;
             comboBox9.SelectedIndex = 0;
+
+            textBox25.Text = "C:\\Users\\Katya\\Desktop\\Учеба\\Спбпу\\Практика ПЭСК\\Нужное\\Переферийные и защитные устройства характеристики.xlsx";
 
             checkBox1.Checked = true;
             comboBox6.Enabled = !checkBox1.Checked;
@@ -159,7 +163,24 @@ namespace ClassLibrary_PESK2
             //Ищем Предохранитель
             if (foundDevice != null)
             {
-                FindProtection(float.Parse(foundDevice.Power));
+                Protection foundProtect = new Protection();
+                string protectCurrent = FindProtectionCurrent(series, foundDevice.Voltage, foundDevice.Power);
+                if (!string.IsNullOrEmpty(protectCurrent))
+                {
+                    MessageBox.Show($"Ток: {protectCurrent}");
+                    foundProtect = FindProtection(protectCurrent);
+                    if (foundProtect != null)
+                    {
+                        string deviceInfo = $"ПЧ\r\n Номер: {foundDevice.Number}, Напряжение: {foundDevice.Voltage},\r\n Мощность: {foundDevice.Power}," +
+                            $" Ток выс перегрузки: {foundDevice.OverloadCurrent}, Ток норм перегрузки: {foundDevice.NormalCurrent}\r\n";
+                        string protectInfo = $"Защита\r\n Номер: {foundProtect.Number}, Ток: {foundProtect.Current}\r\n";
+                        MessageBox.Show("Информация об устройствах:\r\n" + deviceInfo + protectInfo);
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("Ток не найден или произошла ошибка.");
+                }
             }
 
             //if (!string.IsNullOrEmpty(textBox21.Text) && !string.IsNullOrEmpty(textBox22.Text)
@@ -278,6 +299,18 @@ namespace ClassLibrary_PESK2
             }
         }
 
+        private void button24_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog of = new OpenFileDialog();
+            of.Filter = "Файлы Excel|*.xls;*.xlsx;*.xlsm";
+            if (of.ShowDialog() == DialogResult.OK)
+            {
+                string filePath = of.FileName;
+                textBox25.Text = filePath;
+                textBox25.SelectionStart = textBox25.Text.Length;
+                textBox25.SelectionLength = 0;
+            }
+        }
 
 
         //// Бесполезные вещи ////
@@ -534,11 +567,13 @@ namespace ClassLibrary_PESK2
                                 device.Number = part.PartNr;
                                 device.Voltage = part.Properties.ARTICLE_VOLTAGE;
                                 //device.Current = part.Properties.ARTICLE_ELECTRICALCURRENT;
-                                string powerString = part.Properties.ARTICLE_CHARACTERISTICS.GetDisplayString().GetString(ISOCode.Language.L___);
-                                device.Power = powerString.Replace("кВт", "").Trim(); // Удаляем "кВт"
                                 device.Discribe = part.Properties.ARTICLE_NOTE.GetDisplayString().GetString(ISOCode.Language.L___);
                                 device.OverloadCurrent = part.Properties[22337][1].ToMultiLangString().GetString(0).Replace(".", ",");
                                 device.NormalCurrent = part.Properties[22337][2].ToMultiLangString().GetString(0).Replace(".", ",");
+
+                                string powerString = part.Properties.ARTICLE_CHARACTERISTICS.GetDisplayString().GetString(ISOCode.Language.L___);
+                                powerString = ExtractPowerValue(powerString);
+                                device.Power = powerString;
 
                                 devices.Add(device);
                             }
@@ -687,7 +722,11 @@ namespace ClassLibrary_PESK2
                     return float.MaxValue; 
                 })
                 .FirstOrDefault();
-            return bestDeviceOverall;
+            if (float.Parse(bestDeviceOverall.NormalCurrent) > current)
+            {
+                return bestDeviceOverall;
+            }
+            return null;
         }
 
         private Device FindDeviceOverload(string series, string voltage, float power, float current)
@@ -777,7 +816,6 @@ namespace ClassLibrary_PESK2
                 {
                     if (float.TryParse(d.OverloadCurrent, out float deviceCurrent))
                     {
-                        MessageBox.Show(deviceCurrent.ToString());
                         // Разница только по току
                         return (deviceCurrent >= current)
                                    ? (deviceCurrent - current)
@@ -786,13 +824,18 @@ namespace ClassLibrary_PESK2
                     return float.MaxValue;
                 })
                 .FirstOrDefault();
-            return bestDeviceOverall;
+            if (float.Parse(bestDeviceOverall.OverloadCurrent) > current)
+            {
+                return bestDeviceOverall;
+            }
+            return null;
         }
 
-        private void FindProtection(float power)
+        private Protection FindProtection(string current)
         {
             string type = comboBox9.Text.Trim();
             bool find = false;
+            Protection protect = new Protection();
 
             MDPartsDatabase partsDatabase = null;
             try
@@ -803,7 +846,7 @@ namespace ClassLibrary_PESK2
                 if (partsDatabase == null)
                 {
                     MessageBox.Show("Не удалось открыть базу данных изделий.", "Ошибка");
-                    return;
+                    return null;
                 }
 
                 MDPartsDatabaseItemPropertyList filter = new MDPartsDatabaseItemPropertyList();
@@ -825,14 +868,18 @@ namespace ClassLibrary_PESK2
                         {
                             if (!string.IsNullOrEmpty(part.PartNr))
                             {
-                                string powerString = part.Properties.ARTICLE_CHARACTERISTICS.GetDisplayString().GetString(ISOCode.Language.L___);
-                                powerString = ExtractPowerValue(powerString);
-                                MessageBox.Show($"{part.PartNr}, {powerString}");
-                                find = true;
+                                string curr = part.Properties.ARTICLE_ELECTRICALCURRENT;
+                                if (curr == current)
+                                {
+                                    protect.Number = part.PartNr;
+                                    protect.Current = part.Properties.ARTICLE_ELECTRICALCURRENT;
+                                    protect.Discribe = part.Properties.ARTICLE_NOTE.GetDisplayString().GetString(ISOCode.Language.L___);
+                                    find = true;
+                                }
                             }
                         }
                     }
-                    if (!find) { MessageBox.Show("Не найдено защитное устройство, соответствующие заданным критериям.", "Предупреждение"); }
+                    if (!find) { MessageBox.Show("Не найдены защитные устройства, соответствующие заданным критериям.", "Предупреждение"); }
                 }
                 else
                 {
@@ -842,6 +889,7 @@ namespace ClassLibrary_PESK2
             catch (Exception ex)
             {
                 MessageBox.Show("Ошибка при загрузке данных: " + ex.Message + "\r\n" + ex.StackTrace, "Ошибка");
+                return null;
             }
             finally
             {
@@ -861,6 +909,120 @@ namespace ClassLibrary_PESK2
                     }
                 }
             }
+            if (find) { return protect; }
+            else { return null; }
+        }
+
+        private string FindProtectionCurrent(string series, string voltage, string power)
+        {
+            // Ищем ток в таблице
+            if (voltage == "220")
+            {
+                return null;
+            }
+
+            string type = comboBox9.Text.Trim(); 
+            string excelFilePath = textBox25.Text;
+
+            if (string.IsNullOrEmpty(excelFilePath) || !File.Exists(excelFilePath))
+            {
+                MessageBox.Show("Не указан путь к файлу Excel или файл не существует.", "Ошибка");
+                return null;
+            }
+
+            try
+            {
+                // Открываем Excel файл
+                using (FileStream stream = File.Open(excelFilePath, FileMode.Open, FileAccess.Read))
+                {
+                    using (IExcelDataReader reader = ExcelReaderFactory.CreateReader(stream))
+                    {
+                        DataSet result = reader.AsDataSet();
+                        DataTable table = result.Tables[0];
+
+                        // Определяем номер столбца
+                        string powerColumn = "";
+                        string currentColumn = "";
+
+                        switch (series)
+                        {
+                            case "VF-101":
+                                powerColumn = "A";
+                                if (voltage == "380")
+                                {
+                                    currentColumn = (type == "Защитный выключатель") ? "C" : "D";
+                                }
+                                else if (voltage == "690")
+                                {
+                                    currentColumn = "F";
+                                }
+                                break;
+                            case "VF-51":
+                                powerColumn = "K";
+                                currentColumn = (type == "Защитный выключатель") ? "M" : "N";
+                                break;
+                            case "VF-11":
+                                powerColumn = "S";
+                                currentColumn = (type == "Защитный выключатель") ? "U" : "V";
+                                break;
+                            default:
+                                MessageBox.Show($"Неизвестная серия оборудования: {series}", "Предупреждение");
+                                stream.Close();
+                                return null;
+                        }
+
+                        // Cтрока с мощностью
+                        int powerColumnIndex = ColumnNameToNumber(powerColumn);
+                        int currentColumnIndex = ColumnNameToNumber(currentColumn);
+
+                        for (int row = 4; row < table.Rows.Count; row++) // С 5 строки
+                        {
+                            DataRow currentRow = table.Rows[row];
+                            string powerValue = currentRow[powerColumnIndex]?.ToString().Trim();
+
+                            if (string.Equals(powerValue, power, StringComparison.OrdinalIgnoreCase))
+                            {
+                                // Ток
+                                string currentValue = currentRow[currentColumnIndex]?.ToString().Trim();
+
+                                if (!string.IsNullOrEmpty(currentValue))
+                                {
+                                    // Убираем "gG-" или "aR-"
+                                    if (type == "Плавкий предохранитель")
+                                    {
+                                        currentValue = currentValue.Replace("gG-", "").Replace("aR-", "").Trim();
+                                    }
+                                    stream.Close();
+                                    return currentValue;
+                                }
+                                stream.Close();
+                                return currentValue;
+                            }
+                        }
+
+                        MessageBox.Show($"Мощность '{power}' не найдена в таблице для серии '{series}'.", "Предупреждение");
+                        stream.Close();
+                        return null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при чтении файла Excel: {ex.Message}", "Ошибка");
+                return null;
+            }
+        }
+
+        private int ColumnNameToNumber(string columnName)
+        {
+            // Названия столбцов
+            int number = 0;
+            foreach (char c in columnName.ToUpper())
+            {
+                number *= 26;
+                number += (c - 'A' + 1);
+            }
+            return number - 1;
         }
 
         private string ExtractPowerValue(string powerString)
@@ -883,6 +1045,7 @@ namespace ClassLibrary_PESK2
             }
             return result;
         }
+
         private void ParameterChanged(object sender, EventArgs e)
         {
             // Обновление ComboBox6
@@ -945,6 +1108,14 @@ namespace ClassLibrary_PESK2
             public string OverloadCurrent { get; set; }
             public string NormalCurrent { get; set; }
             public string Power { get; set; }
+            public string Discribe { get; set; }
+        }
+
+        public class Protection
+        {
+            // Класс для представления Защитного устройства
+            public string Number { get; set; }
+            public string Current { get; set; }
             public string Discribe { get; set; }
         }
 

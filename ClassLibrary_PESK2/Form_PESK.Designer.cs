@@ -85,6 +85,9 @@
             this.label18 = new System.Windows.Forms.Label();
             this.label17 = new System.Windows.Forms.Label();
             this.label16 = new System.Windows.Forms.Label();
+            this.button24 = new System.Windows.Forms.Button();
+            this.textBox25 = new System.Windows.Forms.TextBox();
+            this.label26 = new System.Windows.Forms.Label();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.tabPage3.SuspendLayout();
@@ -496,6 +499,9 @@
             // 
             // tabPage3
             // 
+            this.tabPage3.Controls.Add(this.button24);
+            this.tabPage3.Controls.Add(this.textBox25);
+            this.tabPage3.Controls.Add(this.label26);
             this.tabPage3.Controls.Add(this.button23);
             this.tabPage3.Controls.Add(this.textBox24);
             this.tabPage3.Controls.Add(this.label24);
@@ -713,6 +719,32 @@
             this.label16.Text = "Источник для парсинга цен на ПЧ";
             this.label16.TextAlign = System.Drawing.ContentAlignment.TopRight;
             // 
+            // button24
+            // 
+            this.button24.Location = new System.Drawing.Point(606, 377);
+            this.button24.Name = "button24";
+            this.button24.Size = new System.Drawing.Size(125, 28);
+            this.button24.TabIndex = 36;
+            this.button24.Text = "Поиск";
+            this.button24.UseVisualStyleBackColor = true;
+            this.button24.Click += new System.EventHandler(this.button24_Click);
+            // 
+            // textBox25
+            // 
+            this.textBox25.Location = new System.Drawing.Point(31, 380);
+            this.textBox25.Name = "textBox25";
+            this.textBox25.Size = new System.Drawing.Size(569, 22);
+            this.textBox25.TabIndex = 35;
+            // 
+            // label26
+            // 
+            this.label26.AutoSize = true;
+            this.label26.Location = new System.Drawing.Point(28, 361);
+            this.label26.Name = "label26";
+            this.label26.Size = new System.Drawing.Size(329, 16);
+            this.label26.TabIndex = 34;
+            this.label26.Text = "Защитно-коммуникационнная аппаратура (Excel)\r\n";
+            // 
             // Form_PESK
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
@@ -790,5 +822,8 @@
         private System.Windows.Forms.Button button3;
         private System.Windows.Forms.ComboBox comboBox9;
         private System.Windows.Forms.Label label25;
+        private System.Windows.Forms.Button button24;
+        private System.Windows.Forms.TextBox textBox25;
+        private System.Windows.Forms.Label label26;
     }
 }
