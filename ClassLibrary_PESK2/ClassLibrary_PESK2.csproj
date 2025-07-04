@@ -169,7 +169,7 @@
     <Compile Include="Class1.cs" />
     <Compile Include="Class2.cs" />
     <Compile Include="Class_FolderPicker.cs" />
-    <Compile Include="CodeFile_ing.cs" />
+    <Compile Include="Code_draw.cs" />
     <Compile Include="Form1.cs">
       <SubType>Form</SubType>
     </Compile>

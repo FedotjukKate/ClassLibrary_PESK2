@@ -40,6 +40,7 @@ namespace ClassLibrary_PESK2
     public partial class Form_PESK : Form
     {
         private List<Device> devices = new List<Device>();
+        private List<Filter> filters = new List<Filter>();
         private Device foundDevice;
         private bool flagNormal = true;
 
@@ -54,16 +55,19 @@ namespace ClassLibrary_PESK2
             comboBox7.SelectedIndex = 0;
             comboBox8.SelectedIndex = 0;
             comboBox9.SelectedIndex = 0;
+            comboBox10.SelectedIndex = 0;
+            comboBox11.SelectedIndex = 0;
 
             textBox25.Text = "C:\\Users\\Katya\\Desktop\\Учеба\\Спбпу\\Практика ПЭСК\\Нужное\\Переферийные и защитные устройства характеристики.xlsx";
+            textBox26.Text = "C:\\Users\\Katya\\Desktop\\Учеба\\Спбпу\\Практика ПЭСК\\Нужное\\Рекомендуемые силовые опции.xlsx";
 
             checkBox1.Checked = true;
             comboBox6.Enabled = !checkBox1.Checked;
             checkBox1.CheckedChanged += (sender, e) => comboBox6.Enabled = !checkBox1.Checked;
 
-            // Загрузка данных из базы
+            // Загрузка данных о ПЧ из базы
             LoadDataFromDatabase();
-            DisplayDeviceInfo();
+            //DisplayDeviceInfo();
             UpdateDeviceList();
 
             // События изменения
@@ -84,6 +88,8 @@ namespace ClassLibrary_PESK2
             string power = textBox1.Text.Trim();
             string current = textBox2.Text.Trim();
             string voltage = comboBox5.SelectedItem.ToString();
+
+            filters.Clear();
 
             //Ищем ПЧ
             if (checkBox1.Checked)
@@ -125,22 +131,29 @@ namespace ClassLibrary_PESK2
                     d.Voltage == voltage);
                 }
 
-                // Ближайшее
-                if (foundDevice == null)
+                try
                 {
-                    if (flagNormal) { foundDevice = FindDeviceNormal(series, voltage, powerInt, currentInt); }
-                    else { foundDevice = FindDeviceOverload(series, voltage, powerInt, currentInt); }
-                }
+                    // Ближайшее
+                    if (foundDevice == null)
+                    {
+                        if (flagNormal) { foundDevice = FindDeviceNormal(series, voltage, powerInt, currentInt); }
+                        else { foundDevice = FindDeviceOverload(series, voltage, powerInt, currentInt); }
+                    }
 
-                if (foundDevice != null)
-                {
-                    article = foundDevice.Number;
-                    discribe = foundDevice.Discribe;
-                    MessageBox.Show($"Найден номер устройства: {foundDevice.Number}");
+                    if (foundDevice != null)
+                    {
+                        article = foundDevice.Number;
+                        discribe = foundDevice.Discribe;
+                        MessageBox.Show($"Найден номер устройства: {foundDevice.Number}");
+                    }
+                    else
+                    {
+                        MessageBox.Show("Устройство с указанными параметрами не найдено.", "Ошибка");
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    MessageBox.Show("Устройство с указанными параметрами не найдено.", "Ошибка");
+                    MessageBox.Show($"Ошибка в заполнении базы данных: {ex.Message}", "Ошибка!");
                 }
             }
             else
@@ -183,63 +196,88 @@ namespace ClassLibrary_PESK2
                 }
             }
 
-            //if (!string.IsNullOrEmpty(textBox21.Text) && !string.IsNullOrEmpty(textBox22.Text)
-            //    && !string.IsNullOrEmpty(textBox23.Text) && !string.IsNullOrEmpty(textBox24.Text))
-            //{
-            //    button2.Enabled = true;
-            //    button3.Enabled = true;
+            //Ищем Фильтры
+            if (foundDevice != null)
+            {
+                string input_filter = null;
+                string input_throttle = null;
+                string output_filter = null;
+                string output_throttle = null;
 
-            //    string projectName = textBox21.Text;
+                if (comboBox10.Text.Trim() != "Нет" || comboBox11.Text.Trim() != "Нет")
+                {
+                    input_filter = FindFilterNumber(1, series, foundDevice.Voltage, foundDevice.Power);
+                    input_throttle = FindFilterNumber(2, series, foundDevice.Voltage, foundDevice.Power);
+                    output_throttle = FindFilterNumber(3, series, foundDevice.Voltage, foundDevice.Power);
+                    output_filter = FindFilterNumber(4, series, foundDevice.Voltage, foundDevice.Power);
 
-            //    // путь к папке для хранения
-            //    string documentsPath = textBox22.Text;
-            //    string projectDirectory = Path.Combine(documentsPath, projectName);
+                    FindFilter(input_filter, input_throttle, output_filter, output_throttle);
 
-            //    // Путь к проекту полный
-            //    string projectPath = Path.Combine(projectDirectory, projectName + ".elk");
-
-
-            //    // Проверяем, существует ли папка. Если нет - создаем
-            //    if (!Directory.Exists(projectDirectory))
-            //    {
-            //        Directory.CreateDirectory(projectDirectory);
-            //    }
-
-            //    // EPLAN
-            //    try
-            //    {
-            //        string templatesPath = textBox23.Text;
-
-            //        using (SafetyPoint safetyPoint = SafetyPoint.Create())
-            //        {
-            //            // Cоздание проекта
-            //            ProjectManager projectManager = new ProjectManager();
-            //            Eplan.EplApi.DataModel.Project oProject = projectManager.CreateProject(projectPath, templatesPath);
-
-            //            //Create_Pages(oProject);
-
-            //            if (oProject != null)
-            //            {
-            //                MessageBox.Show($"Проект EPLAN \"{projectName}\" успешно создан в папке: {projectDirectory}", "Успешно");
-            //            }
-            //            else
-            //            {
-            //                MessageBox.Show($"Не удалось создать проект EPLAN \"{projectName}\"", "Ошибка");
-            //            }
-            //            safetyPoint.Commit();
-            //        }
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        MessageBox.Show($"Ошибка при создании проекта EPLAN: {ex.Message}", "Ошибка!");
-            //    }
-            //}
-            //else
-            //{
-            //    MessageBox.Show("Заполните все поля вкладки 'Инженер'. ", "Предупреждение");
-            //}
+                    string deviceInfo = $"ПЧ\r\n Номер: {foundDevice.Number}, Напряжение: {foundDevice.Voltage},\r\n Мощность: {foundDevice.Power}," +
+                            $" Ток выс перегрузки: {foundDevice.OverloadCurrent}, Ток норм перегрузки: {foundDevice.NormalCurrent}\r\n";
+                    string filterInfo = "";
+                    foreach (Filter filter in filters)
+                    {
+                        filterInfo += $"Фильтр Номер: {filter.Number}\r\n";
+                    }
+                    MessageBox.Show("Информация об устройствах:\r\n" + deviceInfo + filterInfo);
+                }
+            }
 
 
+            if (!string.IsNullOrEmpty(textBox21.Text) && !string.IsNullOrEmpty(textBox22.Text)
+                && !string.IsNullOrEmpty(textBox23.Text) && !string.IsNullOrEmpty(textBox24.Text))
+            {
+                button2.Enabled = true;
+                button3.Enabled = true;
+
+                string projectName = textBox21.Text;
+
+                // путь к папке для хранения
+                string documentsPath = textBox22.Text;
+                string projectDirectory = Path.Combine(documentsPath, projectName);
+                // Путь к проекту полный
+                string projectPath = Path.Combine(projectDirectory, projectName + ".elk");
+
+                // Проверяем, существует ли папка. Если нет - создаем
+                if (!Directory.Exists(projectDirectory))
+                {
+                    Directory.CreateDirectory(projectDirectory);
+                }
+
+                // EPLAN
+                try
+                {
+                    string templatesPath = textBox23.Text;
+
+                    using (SafetyPoint safetyPoint = SafetyPoint.Create())
+                    {
+                        // Cоздание проекта
+                        ProjectManager projectManager = new ProjectManager();
+                        Eplan.EplApi.DataModel.Project oProject = projectManager.CreateProject(projectPath, templatesPath);
+
+                        //Create_Pages(oProject);
+
+                        if (oProject != null)
+                        {
+                            MessageBox.Show($"Проект EPLAN \"{projectName}\" успешно создан в папке: {projectDirectory}", "Успешно");
+                        }
+                        else
+                        {
+                            MessageBox.Show($"Не удалось создать проект EPLAN \"{projectName}\"", "Ошибка");
+                        }
+                        safetyPoint.Commit();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка при создании проекта EPLAN: {ex.Message}", "Ошибка!");
+                }
+            }
+            else
+            {
+                MessageBox.Show("Заполните все поля вкладки 'Инженер'. ", "Предупреждение");
+            }
         }
 
         private void button2_Click(object sender, EventArgs e)
@@ -257,7 +295,6 @@ namespace ClassLibrary_PESK2
         {
             MessageBox.Show("Кнопка 4", "Предупреждение");
         }
-
 
         //// Кнопки поиска ////
         private void button21_Click(object sender, EventArgs e)
@@ -312,6 +349,18 @@ namespace ClassLibrary_PESK2
             }
         }
 
+        private void button25_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog of = new OpenFileDialog();
+            of.Filter = "Файлы Excel|*.xls;*.xlsx;*.xlsm";
+            if (of.ShowDialog() == DialogResult.OK)
+            {
+                string filePath = of.FileName;
+                textBox26.Text = filePath;
+                textBox26.SelectionStart = textBox26.Text.Length;
+                textBox26.SelectionLength = 0;
+            }
+        }
 
         //// Бесполезные вещи ////
         /////private void button2_Click(object sender, EventArgs e)
@@ -915,7 +964,7 @@ namespace ClassLibrary_PESK2
 
         private string FindProtectionCurrent(string series, string voltage, string power)
         {
-            // Ищем ток в таблице
+            // Ищем ток предохранителя в таблице Excel
             if (voltage == "220")
             {
                 return null;
@@ -958,13 +1007,20 @@ namespace ClassLibrary_PESK2
                                 }
                                 break;
                             case "VF-51":
+                                if (voltage == "690")
+                                {
+                                    stream.Close();
+                                    return null;
+                                }
                                 powerColumn = "K";
                                 currentColumn = (type == "Защитный выключатель") ? "M" : "N";
                                 break;
                             case "VF-11":
-                                powerColumn = "S";
-                                currentColumn = (type == "Защитный выключатель") ? "U" : "V";
-                                break;
+                                //powerColumn = "S";
+                                //currentColumn = (type == "Защитный выключатель") ? "U" : "V";
+                                //break;
+                                stream.Close();
+                                return null;
                             default:
                                 MessageBox.Show($"Неизвестная серия оборудования: {series}", "Предупреждение");
                                 stream.Close();
@@ -1013,6 +1069,222 @@ namespace ClassLibrary_PESK2
             }
         }
 
+        private string FindFilterNumber(int num, string series, string voltage, string power)
+        {
+            // Ищем фильтр в таблице
+            if (voltage == "220")
+            {
+                return null;
+            }
+
+            int type = 0;
+            string excelFilePath = textBox26.Text;
+
+            if (num == 1 && comboBox10.Text.Trim() != "Нет" && comboBox10.Text.Trim() != "AC дроссель") { type = 1; }
+            else if (num == 2 && comboBox10.Text.Trim() != "Нет" && comboBox10.Text.Trim() != "ЭМС фильтр") { type = 2; }
+            else if (num == 3 && comboBox11.Text.Trim() == "Дроссель") { type = 3; }
+            else if (num == 4 && comboBox11.Text.Trim() == "Синус-фильтр") { type = 4; }
+
+            if (type == 0) { return null; }
+
+            if (string.IsNullOrEmpty(excelFilePath) || !File.Exists(excelFilePath))
+            {
+                MessageBox.Show("Не указан путь к файлу Excel или файл не существует.", "Ошибка");
+                return null;
+            }
+
+            try
+            {
+                // Открываем Excel файл
+                using (FileStream stream = File.Open(excelFilePath, FileMode.Open, FileAccess.Read))
+                {
+                    using (IExcelDataReader reader = ExcelReaderFactory.CreateReader(stream))
+                    {
+                        DataSet result = reader.AsDataSet();
+                        DataTable table = result.Tables[0];
+
+                        // Определяем номер столбца
+                        string powerColumn = "";
+                        string filterColumn = "";
+
+                        switch (series)
+                        {
+                            case "VF-101":
+                                powerColumn = "A";
+                                if (voltage == "380")
+                                {
+                                    if (type == 1) { filterColumn = "B"; }
+                                    else if (type == 2) { filterColumn = "C"; }
+                                    else if (type == 3) { filterColumn = "D"; }
+                                    else if (type == 4) { filterColumn = "E"; }
+                                }
+                                else if (voltage == "690")
+                                {
+                                    if (type == 1) { filterColumn = "F"; }
+                                    else if (type == 2) { filterColumn = "G"; }
+                                    else if (type == 3) { filterColumn = "H"; }
+                                    else if (type == 4) { filterColumn = "I"; }
+                                }
+                                break;
+                            case "VF-51":
+                                if (voltage == "690") 
+                                {
+                                    stream.Close();
+                                    return null;
+                                }
+                                powerColumn = "N";
+                                if (type == 1) { filterColumn = "O"; }
+                                else if (type == 2) { filterColumn = "P"; }
+                                else if (type == 3) { filterColumn = "Q"; }
+                                else if (type == 4) { filterColumn = "R"; }
+                                break;
+                            case "VF-11":
+                                //powerColumn = "S";
+                                //currentColumn = (type == "Защитный выключатель") ? "U" : "V";
+                                //break;
+                                stream.Close();
+                                return null;
+                            default:
+                                MessageBox.Show($"Неизвестная серия оборудования: {series}", "Предупреждение");
+                                stream.Close();
+                                return null;
+                        }
+
+                        // Cтрока с мощностью
+                        int powerColumnIndex = ColumnNameToNumber(powerColumn);
+                        int filterColumnIndex = ColumnNameToNumber(filterColumn);
+
+                        for (int row = 3; row < table.Rows.Count; row++) // С 4 строки
+                        {
+                            DataRow filterRow = table.Rows[row];
+                            string powerValue = filterRow[powerColumnIndex]?.ToString().Trim();
+
+                            if (string.Equals(powerValue, power, StringComparison.OrdinalIgnoreCase))
+                            {
+                                // Номер
+                                string filterName = filterRow[filterColumnIndex]?.ToString().Trim();
+                                stream.Close();
+                                return filterName;
+                            }
+                        }
+
+                        MessageBox.Show($"Мощность '{power}' не найдена в таблице для серии '{series}'.", "Предупреждение");
+                        stream.Close();
+                        return null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при чтении файла Excel: {ex.Message}", "Ошибка");
+                return null;
+            }
+        }
+
+        private void FindFilter(string input_filter, string input_throttle, string output_filter, string output_throttle)
+        {
+            MDPartsDatabase partsDatabase = null;
+            try
+            {
+                MDPartsManagement oPartsManagement = new MDPartsManagement();
+                partsDatabase = oPartsManagement.OpenDatabase();
+
+                if (partsDatabase == null)
+                {
+                    MessageBox.Show("Не удалось открыть базу данных изделий.", "Ошибка");
+                    return;
+                }
+
+                if (!string.IsNullOrEmpty(input_filter) || !string.IsNullOrEmpty(output_filter)) 
+                {
+                    MDPartsDatabaseItemPropertyList filter = new MDPartsDatabaseItemPropertyList();
+                    filter.ARTICLE_PRODUCTSUBGROUP = "1";
+                    filter.ARTICLE_PRODUCTGROUP = "24";
+
+                    MDPartsDatabaseItemPropertyList properties = new MDPartsDatabaseItemPropertyList();
+                    MDPart[] SubGroupParts = partsDatabase.GetParts(filter, properties);
+
+                    if (SubGroupParts != null && SubGroupParts.Length > 0)
+                    {
+                        foreach (MDPart part in SubGroupParts)
+                        {
+                            // Производитель
+                            string manufacturer = part.Properties.ARTICLE_MANUFACTURER;
+                            manufacturer = manufacturer.ToLower();
+                            if (manufacturer == "veda" && (part.PartNr == input_filter || part.PartNr == output_filter))
+                            {
+                                // Создание объекта и заполнение его данными
+                                Filter filt = new Filter();
+                                filt.Number = part.PartNr;
+                                //filt.Current = part.Properties.ARTICLE_ELECTRICALCURRENT;
+                                filt.Discribe = part.Properties.ARTICLE_NOTE.GetDisplayString().GetString(ISOCode.Language.L___);
+                                filters.Add(filt);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        MessageBox.Show("Не найдены фильтры, соответствующие заданным критериям.", "Предупреждение");
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(input_throttle) || !string.IsNullOrEmpty(output_throttle))
+                {
+                    MDPartsDatabaseItemPropertyList filter = new MDPartsDatabaseItemPropertyList();
+                    filter.ARTICLE_PRODUCTSUBGROUP = "1";
+                    filter.ARTICLE_PRODUCTGROUP = "21";
+
+                    MDPartsDatabaseItemPropertyList properties = new MDPartsDatabaseItemPropertyList();
+                    MDPart[] SubGroupParts = partsDatabase.GetParts(filter, properties);
+
+                    if (SubGroupParts != null && SubGroupParts.Length > 0)
+                    {
+                        foreach (MDPart part in SubGroupParts)
+                        {
+                            // Производитель
+                            string manufacturer = part.Properties.ARTICLE_MANUFACTURER;
+                            manufacturer = manufacturer.ToLower();
+                            if (manufacturer == "veda" && (part.PartNr == input_throttle || part.PartNr == output_throttle))
+                            {
+                                // Создание объекта и заполнение его данными
+                                Filter filt = new Filter();
+                                filt.Number = part.PartNr;
+                                //filt.Current = part.Properties.ARTICLE_ELECTRICALCURRENT;
+                                filt.Discribe = part.Properties.ARTICLE_NOTE.GetDisplayString().GetString(ISOCode.Language.L___);
+                                filters.Add(filt);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        MessageBox.Show("Не найдены дроссель, соответствующие заданным критериям.", "Предупреждение");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка при загрузке данных: " + ex.Message + "\r\n" + ex.StackTrace, "Ошибка");
+            }
+            finally
+            {
+                if (partsDatabase != null)
+                {
+                    try
+                    {
+                        partsDatabase.Close();
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Ошибка при закрытии базы данных: {ex.Message}", "Ошибка");
+                    }
+                    finally
+                    {
+                        partsDatabase.Dispose();
+                    }
+                }
+            }
+        }
+
         private int ColumnNameToNumber(string columnName)
         {
             // Названия столбцов
@@ -1037,10 +1309,9 @@ namespace ClassLibrary_PESK2
                 result = match.Groups[1].Value.Trim();
                 result = result.Replace(",", ".");
 
-                // Дополнительная проверка, что это число
                 if (!float.TryParse(result, NumberStyles.Any, CultureInfo.InvariantCulture, out _))
                 {
-                    result = ""; // Возвращаем пустую строку, если не удалось преобразовать в число
+                    result = "";
                 }
             }
             return result;
@@ -1116,6 +1387,14 @@ namespace ClassLibrary_PESK2
             // Класс для представления Защитного устройства
             public string Number { get; set; }
             public string Current { get; set; }
+            public string Discribe { get; set; }
+        }
+
+        public class Filter
+        {
+            // Класс для представления Защитного устройства
+            public string Number { get; set; }
+            //public string Current { get; set; }
             public string Discribe { get; set; }
         }
 
@@ -1454,6 +1733,16 @@ namespace ClassLibrary_PESK2
             string load = comboBox3.SelectedItem.ToString();
             if (load == "Общепром. нагрузка") { flagNormal = false; }
             else {  flagNormal = true; }
+        }
+
+        private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (comboBox1.SelectedItem.ToString() == "VF-51")
+            {
+                comboBox9.SelectedIndex = 0;
+                comboBox9.Enabled = false;
+            }
+            else { comboBox9.Enabled = true; }
         }
     }
 }
